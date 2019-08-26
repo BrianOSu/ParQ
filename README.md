@@ -2,11 +2,11 @@
 
 KDB library to read and write parquet files.
 
-## Author
+Author: Brian O'Sullivan
 
-Brian O'Sullivan
+Email: b.osullivan@live.ie
 
-https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
+LinkedIn: https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
 
 ## Getting Started
 
@@ -14,9 +14,8 @@ https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
 
 - kdb+
 - Apache Arrow
-```
-https://github.com/apache/arrow
-```
+  * https://github.com/apache/arrow
+
 Currently only supports linux
 
 ### Usage instructions
