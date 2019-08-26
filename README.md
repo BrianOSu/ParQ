@@ -2,6 +2,12 @@
 
 KDB library to read and write parquet files.
 
+## Author
+
+Brian O'Sullivan
+
+https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
+
 ## Getting Started
 
 ### Prerequisites
