@@ -61,7 +61,7 @@ parquet::schema::NodePtr WRITER::k2parquet(const std::string& name,K type){
 void WRITER::writeColumn(K col, parquet::RowGroupWriter* rg_writer){
     switch(col->t){
         case KB:
-            writeCol(static_cast<parquet::BoolWriter*>(rg_writer->NextColumn()), col);
+            writeCol(static_cast<parquet::BoolWriter*>(rg_writer->NextColumn()), col->n, &kB(col)[0]);
             break;
         #if KXVER>=3
         case UU:
@@ -80,17 +80,17 @@ void WRITER::writeColumn(K col, parquet::RowGroupWriter* rg_writer){
         case KU:
         case KV:
         case KT:
-            writeCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col);
+            writeCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col->n, &kI(col)[0]);
             break;
         case KJ:
-            writeCol(static_cast<parquet::Int64Writer*>(rg_writer->NextColumn()), col);
+            writeCol(static_cast<parquet::Int64Writer*>(rg_writer->NextColumn()), col->n, &kJ64(col)[0]);
             break;
         case KE:
-            writeCol(static_cast<parquet::FloatWriter*>(rg_writer->NextColumn()), col);
+            writeCol(static_cast<parquet::FloatWriter*>(rg_writer->NextColumn()), col->n, &kE(col)[0]);
             break;
         case KF:
         case KZ:
-            writeCol(static_cast<parquet::DoubleWriter*>(rg_writer->NextColumn()), col);
+            writeCol(static_cast<parquet::DoubleWriter*>(rg_writer->NextColumn()), col->n, &kF(col)[0]);
             break;
         case KC:
             writeCharCol(static_cast<parquet::ByteArrayWriter*>(rg_writer->NextColumn()), col);
@@ -108,8 +108,9 @@ void WRITER::writeColumn(K col, parquet::RowGroupWriter* rg_writer){
     }
 }
 
-void WRITER::writeCol(parquet::BoolWriter* writer, K col){
-    writer->WriteBatch(col->n, nullptr, nullptr, &kB(col)[0]);
+template<typename T, typename T1>
+void WRITER::writeCol(T writer, int len, T1 col){
+    writer->WriteBatch(len, nullptr, nullptr, col);
 }
 
 #if KXVER>=3
@@ -133,14 +134,6 @@ void WRITER::writeShortCol(parquet::Int32Writer* writer, K col){
         writer->WriteBatch(1, nullptr, nullptr, reinterpret_cast<int32_t*>(&kH(col)[i]));
 }
 
-void WRITER::writeCol(parquet::Int32Writer* writer, K col){
-        writer->WriteBatch(col->n, nullptr, nullptr, &kI(col)[0]);
-}
-
-void WRITER::writeCol(parquet::Int64Writer* writer, K col){
-        writer->WriteBatch(col->n, nullptr, nullptr, &kJ64(col)[0]);
-}
-
 void WRITER::writeCol(parquet::Int96Writer* writer, K col){
     for (int i = 0; i < col->n; i++){
         parquet::Int96 value;
@@ -149,14 +142,6 @@ void WRITER::writeCol(parquet::Int96Writer* writer, K col){
         parquet::Int96SetNanoSeconds(value,kJ(col)[i]);
         writer->WriteBatch(1, nullptr, nullptr, &value);
     }
-}
-
-void WRITER::writeCol(parquet::FloatWriter* writer, K col){
-    writer->WriteBatch(col->n, nullptr, nullptr, &kE(col)[0]);
-}
-
-void WRITER::writeCol(parquet::DoubleWriter* writer, K col){
-    writer->WriteBatch(col->n, nullptr, nullptr, &kF(col)[0]);
 }
 
 void WRITER::writeCharCol(parquet::ByteArrayWriter* writer, K col){

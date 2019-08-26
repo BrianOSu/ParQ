@@ -22,17 +22,14 @@ namespace KDB{
                 static std::shared_ptr<GroupNode> SetupSchema(K names, K values, int numCols);
                 static parquet::schema::NodePtr k2parquet(const std::string& name, K type);
 
-                static void writeCol(parquet::BoolWriter* writer, K col);
+                template<typename T, typename T1>static void writeCol(T writer, int len, T1 col);
+                //static void writeCol(parquet::BoolWriter* writer, int len, B* col);
                 #if KXVER>=3
                 static void writeGuidCol(parquet::FixedLenByteArrayWriter* writer, K col);
                 #endif
                 static void writeByteCol(parquet::FixedLenByteArrayWriter* writer, K col);
                 static void writeShortCol(parquet::Int32Writer* writer, K col);
-                static void writeCol(parquet::Int32Writer* writer, K col);
-                static void writeCol(parquet::Int64Writer* writer, K col);
                 static void writeCol(parquet::Int96Writer* writer, K col);
-                static void writeCol(parquet::FloatWriter* writer, K col);
-                static void writeCol(parquet::DoubleWriter* writer, K col);
                 static void writeCharCol(parquet::ByteArrayWriter* writer, K col);
                 static void writeSymCol(parquet::ByteArrayWriter* writer, K col);
                 static void writeCol(parquet::ByteArrayWriter* writer, K col);
