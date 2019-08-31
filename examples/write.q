@@ -22,22 +22,22 @@ t:([]
      time:n?.z.t)
      
 //Write the above file to parquet as 2 row groups
-\ts .pq.writeMulti[500000#t;`t]
+\ts .pq.writeMulti[500000#t;`t.parquet]
 //1826 55051024
-\ts .pq.writeMulti[-500000#t;`t]
+\ts .pq.writeMulti[-500000#t;`t.parquet]
 //1826 55051024
 
 //Close the writer to avoid corrupt footer
 .pq.closeWriter[]
 
-.pq.load`t
+.pq.load`t.parquet
 
 //Read the first half of the parquet file
 \ts t1:.pq.readMulti[]
 //729 138196912
 
 //Open and read the first half of the file only
-\ts t2:.pq.read`t
+\ts t2:.pq.read`t.parquet
 //671 138196896
 t1~t2
 
@@ -49,11 +49,11 @@ t1~t2
 .pq.close[]
 
 //Write down a table with a single row group only
-\ts .pq.write[t;`t1]
+\ts .pq.write[t;`t1.parquet]
 //3875 928
 
 //Open and read the first row group
-\ts t2:.pq.read`t1
+\ts t2:.pq.read`t1.parquet
 //1288 276392864
 t1~t2
 
@@ -74,5 +74,5 @@ t~t1
 //import pandas as pd
 //import pyarrow as pa
 //import pyarrow.parquet as pq
-//table = pq.read_table('t')
+//table = pq.read_table('t.parquet')
 //table.to_pandas()

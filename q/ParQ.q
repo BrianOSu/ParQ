@@ -6,7 +6,7 @@
 
 ///
 // Set the path to the .so file
-.pq.priv.libPath:`$"src/ParQ"
+.pq.priv.libPath:`$"install/ParQ"
 
 ///
 // Opens and reads the first row group

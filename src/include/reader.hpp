@@ -1,7 +1,11 @@
 #ifndef KDB_PARQUET_READER
 #define KDB_PARQUET_READER
 
-#include <parquet.hpp>
+#include <utils.hpp>
+#include <parquet/api/reader.h>
+
+using parquet::LogicalType;
+using parquet::Type;
 
 namespace KDB{
     namespace PARQ{

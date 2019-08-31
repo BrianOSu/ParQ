@@ -1,26 +1,6 @@
 #ifndef KDB_PARQUET
 #define KDB_PARQUET
 
-#include <cassert>
-#include <fstream>
-#include <memory>
-
-#include <string.h>
-#include <stdio.h>
-//#include <k.h>
-#include <utils.hpp>
-
-#include <arrow/io/file.h>
-#include <arrow/util/logging.h>
-
-#include <parquet/api/reader.h>
-
-using parquet::LogicalType;
-using parquet::Repetition;
-using parquet::Type;
-using parquet::schema::GroupNode;
-using parquet::schema::PrimitiveNode;
-
 #include <reader.hpp>
 #include <writer.hpp>
 

@@ -2,13 +2,13 @@
 #define KDB_UTILS
 
 #include <k.h>
-#include <cmath>
 #include <iostream>
-#include <limits>
 
 //Undefine these fro k.h to use a C++ style equivalent.
+#ifdef KX
 #undef kC
 #undef kU
+#endif
 
 typedef bool    B;
 typedef int64_t J64;

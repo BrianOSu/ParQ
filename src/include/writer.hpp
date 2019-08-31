@@ -2,10 +2,7 @@
 #define KDB_PARQUET_WRITER
 
 #include <utils.hpp>
-
 #include <arrow/io/file.h>
-#include <arrow/util/logging.h>
-
 #include <parquet/api/writer.h>
 
 using parquet::LogicalType;
