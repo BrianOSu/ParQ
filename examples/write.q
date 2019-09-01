@@ -4,9 +4,9 @@ t:([]
      bool:n?0b;
      guid:n?0Ng;
      byte:n?0x00;
-     short:n?100h;
-     int:n?100i;
-     long:n?100;
+     short:n?0Wh;
+     int:n?0Wi;
+     long:n?0W;
      real:n?100e;
      float:n?100f;
      char:n?.Q.a;
@@ -18,7 +18,7 @@ t:([]
      datetime:n?.z.z;
      timespan:n?.z.n;
      minute:n?`minute$.z.t;
-     second:n?`second$.z.t;
+     second:n?0Wv;
      time:n?.z.t)
      
 //Write the above file to parquet as 2 row groups
@@ -52,7 +52,9 @@ t1~t2
 \ts .pq.write[t;`t1.parquet]
 //3875 928
 
-//Open and read the first row group
+.pq.closeWriter[]
+
+//Open and read the entire file
 \ts t2:.pq.read`t1.parquet
 //1288 276392864
 t1~t2
