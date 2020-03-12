@@ -32,12 +32,7 @@ inline const U* kU(const k0* x){return reinterpret_cast<const U*>(x->G0);}
 #endif
 
 inline K kerror (const char* text) { return krr(const_cast<S>(text)); }
-inline K kstring (const char* text) { return kp(const_cast<S>(text)); }
-inline K kstring (const std::string &text) { return kpn(const_cast<S>(&text[0]), text.length()); }
-inline K kstringn (const char* text, J len) { return kpn(const_cast<S>(text),len); }
-inline K ksymbol (const char* text) { return ks(const_cast<S>(text)); }
-inline K oerror (const char* text) { return orr(const_cast<S>(text)); }
-inline S symbol (const char* text) { return ss(const_cast<S>(text)); }
+inline K kerror (std::string text) { return krr(const_cast<S>(text.c_str())); }
 
 #endif
 

@@ -107,7 +107,7 @@ K PWRITE::write(K table, std::string fileName, bool single){
     K colNames=kK(table->k)[0];
     std::shared_ptr<parquet::ParquetFileWriter> file_writer = 
                     open_file_writer(colNames, colValues, fileName, single);
-    if(!instance) instance = new PWRITE {file_writer};
+    if(!instance && !single) instance = new PWRITE {file_writer};
     parquet::RowGroupWriter* rg_writer = file_writer->AppendRowGroup();
     for(int i=0;i<colValues->n;i++)
         WRITER::writeColumn(kK(colValues)[i], rg_writer);

@@ -9,15 +9,13 @@
 .pq.priv.libPath:`$"install/ParQ"
 
 ///
-// Opens and reads the first row group
-// in the supplied parquet file.
+// Opens and reads a given row group in the supplied parquet file.
 // @param file string/sym
 // @param group long
 .pq.readGroup:.pq.priv.libPath 2:(`readGroup;2) 
 
 ///
-// Opens and reads the first row group
-// in the supplied parquet file.
+// Opens and reads the first row group in the supplied parquet file.
 // @param file string/sym
 .pq.read:.pq.readGroup[;0j]
 
