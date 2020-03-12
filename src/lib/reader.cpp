@@ -55,15 +55,21 @@ K PREADER::getCol(T *reader, int rowCount, int kType, F func){
 K PREADER::getBoolCol(parquet::BoolReader *reader, int kType, int rowCount, 
                      uint8_t *valid_bits, int64_t null_count, int64_t levels_read){
     K res = ktn(kType, rowCount);
-    reader->ReadBatchSpaced(rowCount, nullptr, nullptr, &kB(res)[0], valid_bits, 0, &levels_read, nullptr, &null_count);
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
+    reader->ReadBatchSpaced(rowCount, &definition_level, &repetition_level, &kB(res)[0], valid_bits, 0, &levels_read, nullptr, &null_count);
     return res;
 }
 
 K PREADER::getIntCol(parquet::Int32Reader *reader, int kType, int rowCount, 
                      uint8_t *valid_bits, int64_t null_count, int64_t levels_read){
     K res = ktn(kType, rowCount);
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
     for(int i=0;i<rowCount;i++)
-        reader->ReadBatchSpaced(1, nullptr, nullptr, &kI(res)[i], valid_bits, 0, &levels_read, nullptr, &null_count);
+        reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &kI(res)[i], valid_bits, 0, &levels_read, &values_read, &null_count);
     return res;
 }
 
@@ -71,8 +77,11 @@ K PREADER::getShortCol(parquet::Int32Reader *reader, int kType, int rowCount,
                      uint8_t *valid_bits, int64_t null_count, int64_t levels_read){
     K res = ktn(kType, rowCount);
     int32_t value;
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
     for(int i=0;i<rowCount;i++){
-        reader->ReadBatchSpaced(1, nullptr, nullptr, &value, valid_bits, 0, &levels_read, nullptr, &null_count);
+        reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &value, valid_bits, 0, &levels_read, &values_read, &null_count);
         kH(res)[i]=value;
     }
     return res;
@@ -81,8 +90,12 @@ K PREADER::getShortCol(parquet::Int32Reader *reader, int kType, int rowCount,
 K PREADER::getLongCol(parquet::Int64Reader *reader, int kType, int rowCount, 
                         uint8_t *valid_bits, int64_t null_count, int64_t levels_read){
     K res = ktn(kType, rowCount);
-    for(int i=0;i<rowCount;i++)
-        reader->ReadBatchSpaced(1, nullptr, nullptr, &kJ64(res)[i], valid_bits, 0, &levels_read, nullptr, &null_count);
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
+    for(int i=0;i<rowCount;i++){
+        reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &kJ64(res)[i], valid_bits, 0, &levels_read, &values_read, &null_count);
+    }
     return res;
 }
 
@@ -92,8 +105,11 @@ K PREADER::getInt96Col(parquet::Int96Reader *reader, int kType, int rowCount,
     int64_t unixTime=946684800000000000;
     K res = ktn(kType, rowCount);
     parquet::Int96 value;
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
     for(int i=0;i<rowCount;i++){
-        reader->ReadBatchSpaced(1, nullptr, nullptr, &value, valid_bits, 0, &levels_read, nullptr, &null_count);
+        reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &value, valid_bits, 0, &levels_read, &values_read, &null_count);
         kJ(res)[i]=parquet::Int96GetNanoSeconds(value)-unixTime;
     }
     return res;
@@ -102,16 +118,22 @@ K PREADER::getInt96Col(parquet::Int96Reader *reader, int kType, int rowCount,
 K PREADER::getFloatCol(parquet::FloatReader *reader, int kType, int rowCount, 
                     uint8_t *valid_bits, int64_t null_count, int64_t levels_read){
     K res = ktn(kType, rowCount);
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
     for(int i=0;i<rowCount;i++)
-        reader->ReadBatchSpaced(1, nullptr, nullptr, &kE(res)[i], valid_bits, 0, &levels_read, nullptr, &null_count);
+        reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &kE(res)[i], valid_bits, 0, &levels_read, &values_read, &null_count);
     return res;
 }
 
 K PREADER::getDoubleCol(parquet::DoubleReader *reader, int kType, int rowCount, 
                         uint8_t *valid_bits, int64_t null_count, int64_t levels_read){
     K res = ktn(kType,rowCount);
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
     for(int i=0;i<rowCount;i++)
-        reader->ReadBatchSpaced(1, nullptr, nullptr, &kF(res)[i], valid_bits, 0, &levels_read, nullptr, &null_count);
+        reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &kF(res)[i], valid_bits, 0, &levels_read, &values_read, &null_count);
     return res;
 }
 
@@ -119,8 +141,11 @@ K PREADER::getByteCol(parquet::ByteArrayReader *reader, int kType, int rowCount,
                       uint8_t *valid_bits, int64_t null_count, int64_t levels_read){
     K res = ktn(kType, 0);
     parquet::ByteArray value;
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
     for(int i=0;i<rowCount;i++){
-        reader->ReadBatchSpaced(1, nullptr, nullptr, &value, valid_bits, 0, &levels_read, nullptr, &null_count);
+        reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &value, valid_bits, 0, &levels_read, &values_read, &null_count);
         K bytes = ktn(KG, value.len); 
         std::copy(&value.ptr[0], &value.ptr[0]+value.len, kG(bytes));
         jk(&res,bytes);
@@ -132,8 +157,11 @@ K PREADER::getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCoun
                         uint8_t *valid_bits, int64_t null_count, int64_t levels_read){
     K res = ktn(0,0);
     parquet::ByteArray value;
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
     for(int i=0;i<rowCount;i++){
-        reader->ReadBatchSpaced(1, nullptr, nullptr, &value, valid_bits, 0, &levels_read, nullptr, &null_count);
+        reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &value, valid_bits, 0, &levels_read, &values_read, &null_count);
         jk(&res,kpn((char*)&value.ptr[0], value.len));
     }
     return res;
@@ -145,8 +173,11 @@ K PREADER::getCol(parquet::FixedLenByteArrayReader *reader, int rowCount, int fi
     uint8_t valid_bits[rowCount+1];
     int64_t null_count = -1;
     int64_t levels_read = 0;
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
     for(int i=0;i<rowCount;i++){
-        reader->ReadBatchSpaced(1, nullptr, nullptr, &value, valid_bits, 0, &levels_read, nullptr, &null_count);
+        reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &value, valid_bits, 0, &levels_read, &values_read, &null_count);
         K bytes = ktn(KG, fixedLengthByteSize);
         std::copy(&value.ptr[0], &value.ptr[0]+fixedLengthByteSize, kG(bytes));
         jk(&res,bytes);
