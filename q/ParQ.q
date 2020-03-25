@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////
-//ParQ API to read/write parquet files from within q
-//Author: Brian O'Sullivan
-//Email: b.osullivan@live.ie
+// ParQ API to read/write parquet files from within q
+// Author: Brian O'Sullivan
+// Email: b.osullivan@live.ie
 /////////////////////////////////////////////////////
 
 ///
@@ -50,16 +50,51 @@
 .pq.schema:{[] -1_"\n" vs .pq.priv.schema[]}
 
 ///
-// Write a table to a parquet file
-// @param table The table the write down to parquet
-// @param filePath Sym/string
-.pq.write:.pq.priv.libPath 2:(`writerSingle;2)
+// Define the available codecs
+.pq.codecs:(`UNCOMPRESSED`SNAPPY`GZIP`LZO`BROTLI`LZ4`ZSTD)!til 7
+
+///
+// Sets the compression codec for writing files
+// @param codec Sym from .pq.codecs
+.pq.setCodec:{[codec]
+    if[not -11h~type codec;
+        '"Codec must be a sym"];
+    if[not codec in key .pq.codecs;
+        '"Codec must exist in .pq.codecs"];
+    .pq.priv.codec:.pq.codecs[codec];
+ }
+
+// Set defaults codec to ZSTD
+.pq.setCodec[`ZSTD]
+
+///
+// Returns the compression the codec is set to
+// @return sym The codec
+.pq.getCodec:{.pq.codecs?.pq.priv.codec}
 
 ///
 // Write a table to a parquet file
 // @param table The table the write down to parquet
-// @param filePath Sym/string
-.pq.writeMulti:.pq.priv.libPath 2:(`writer;2)
+// @param filePath The filepath as a Sym/string
+// @param single Tells the writer if the file will have multiple row groups
+// @param codec The codec to compress the file with
+.pq.priv.write:.pq.priv.libPath 2:(`writer;4)
+
+///
+// Write a table to a parquet file
+// @param t The table the write down to parquet
+// @param f The filepath as a Sym/string
+.pq.write:{[t;f]
+    .pq.priv.write[t;f;1b;.pq.priv.codec]
+ }
+
+///
+// Write a table to a parquet file
+// @param t The table the write down to parquet
+// @param f The filepath as a Sym/string
+.pq.writeMulti:{[t;f]
+    .pq.priv.write[t;f;0b;.pq.priv.codec]
+ }
 
 ///
 // Close the loaded parquet file

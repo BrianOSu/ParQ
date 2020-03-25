@@ -71,16 +71,14 @@ extern"C"{
     return kj(instance->totalRowGroups);
   }
 
-  K writer(K table, K filename){
+  K writer(K table, K filename, K single, K codec){
     if(filename->t!=KC && filename->t!=-KS)
       return kerror("File name must be a string/symbol");
-    return PWRITE::write(table, k2string(filename), false);
-  }
-
-  K writerSingle(K table, K filename){
-    if(filename->t!=KC && filename->t!=-KS)
-      return kerror("File name must be a string/symbol");
-    return PWRITE::write(table, k2string(filename), true);
+    if(single->t!=-KB)
+      return kerror("Single must be a bool");
+    if(codec->t!=-KJ)
+      return kerror("Codec must be a bool between 0 and 5");
+    return PWRITE::write(table, k2string(filename), single->g, parquet::Compression::type(codec->j));
   }
 
   K closeW(K /*x*/){

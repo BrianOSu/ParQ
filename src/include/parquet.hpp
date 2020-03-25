@@ -45,14 +45,15 @@ namespace KDB{
                 static std::shared_ptr<parquet::ParquetFileWriter> open_file_writer(K colNames, 
                                                                                K colValues, 
                                                                                std::string fileName,
-                                                                               bool single);
-                static K write(K table, std::string fileName, bool single);
+                                                                               bool single,
+                                                                               parquet::Compression::type codec);
+                static K write(K table, std::string fileName, bool single, parquet::Compression::type codec);
                 static K close();
 
                 std::shared_ptr<GroupNode> schema_;
                 std::shared_ptr<parquet::ParquetFileWriter> fileWriter_;
                 int currentRowGroup;
-
+                
             private:
                 PWRITE(const PWRITE&) = delete;
                 void operator=(const PWRITE&) = delete;

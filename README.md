@@ -82,6 +82,27 @@ q).pq.close[]
 1b
 ```
 
+### Compression
+
+[All parquet compression codecs are supported. ](https://github.com/apache/parquet-format/blob/54e6133e887a6ea90501ddd72fff5312b7038a7c/src/main/thrift/parquet.thrift#L461)
+
+Compression can be set using the following:
+```q
+q).pq.codecs
+UNCOMPRESSED| 0
+SNAPPY      | 1
+GZIP        | 2
+LZO         | 3
+BROTLI      | 4
+LZ4         | 5
+ZSTD        | 6
+q).pq.setCodec[`ZSTD]
+q).pq.getCodec[]
+`UNCOMPRZSTDESSED
+```
+
+By default, compression is set to ZSTD. From testing, its results have been extremely promissing.
+
 ## Issues
 
 ### Mixed Lists

@@ -92,21 +92,22 @@ PWRITE::~PWRITE(){
 std::shared_ptr<parquet::ParquetFileWriter> PWRITE::open_file_writer(K colNames, 
                                                         K colValues, 
                                                         std::string fileName,
-                                                        bool single){
+                                                        bool single,
+                                                        parquet::Compression::type codec){
   if(!instance || single){
     std::shared_ptr<GroupNode> schema = WRITER::SetupSchema(colNames, colValues, colValues->n);
-    return WRITER::OpenFile(fileName, schema);
+    return WRITER::OpenFile(fileName, schema, codec);
   } else{
       return instance->fileWriter_;
   }
 }
 
-K PWRITE::write(K table, std::string fileName, bool single){
+K PWRITE::write(K table, std::string fileName, bool single, parquet::Compression::type codec){
   try{
     K colValues=kK(table->k)[1];
     K colNames=kK(table->k)[0];
     std::shared_ptr<parquet::ParquetFileWriter> file_writer = 
-                    open_file_writer(colNames, colValues, fileName, single);
+                    open_file_writer(colNames, colValues, fileName, single, codec);
     if(!instance && !single) instance = new PWRITE {file_writer};
     parquet::RowGroupWriter* rg_writer = file_writer->AppendRowGroup();
     for(int i=0;i<colValues->n;i++)
