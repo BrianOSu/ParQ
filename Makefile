@@ -1,6 +1,6 @@
 PROG = KDBParquet
 CC = g++
-CPPFLAGS = -shared -fPIC -Isrc/include -lparquet -D KXVER=3
+CPPFLAGS = -shared -fPIC -Isrc/include -lparquet -D KXVER=3 -std=c++11
 KDBFLAGS = -pthread src/l64/c.o
 
 default: ParQ
