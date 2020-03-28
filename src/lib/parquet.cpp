@@ -30,13 +30,14 @@ K PKDB::loadReader(std::string fileName){
   }
 }
 
-K PKDB::readGroup(std::string fileName, int group){
+K PKDB::readGroup(std::string fileName, int group, K cols){
   try {
     std::shared_ptr<parquet::ParquetFileReader> filerReader = PREADER::open_reader(fileName.c_str());
     std::shared_ptr<parquet::RowGroupReader> row_group_reader = filerReader->RowGroup(group);
     return readTable(row_group_reader,
-                     row_group_reader->metadata()->num_columns(),
-                     row_group_reader->metadata()->num_rows());
+                     cols->n ? cols->n : row_group_reader->metadata()->num_columns(),
+                     row_group_reader->metadata()->num_rows(),
+                     cols);
     filerReader->Close();
   } catch (const std::exception& e) {
       char* error = const_cast<char*>(e.what());
@@ -52,21 +53,35 @@ void PKDB::updateMetaData(){
 
 K PKDB::readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader,
                      int num_cols,
-                     int num_rows){
+                     int num_rows,
+                     K cols){
   //This will hold the column names
   K colNames=ktn(KS,num_cols);
   //This will hold column values
   K colValues = ktn(0,0);
 
   for(int i=0; i<num_cols; i++){
-    std::shared_ptr<parquet::ColumnReader> column_reader = row_group_reader->Column(i);
-    int fixedLengthByteSize = row_group_reader->metadata()->schema()->Column(i)->type_length();
-    kS(colNames)[i]=ss(const_cast<char*>(row_group_reader->metadata()->schema()->Column(i)->name().c_str()));
-    jk(&colValues,PREADER::readColumns(column_reader, num_rows, fixedLengthByteSize));
+    int index = cols->n > 0 ? getColIndex(row_group_reader, std::string{kS(cols)[i]}) : i;
+    kS(colNames)[i] = PKDB::readColName(row_group_reader, index);
+    jk(&colValues,PKDB::getColData(row_group_reader, index, num_rows));
   }
 
   //Return a table to the process
   return xT(xD(colNames,colValues));
+}
+
+int PKDB::getColIndex(std::shared_ptr<parquet::RowGroupReader> row_group_reader, std::string colName){
+  return row_group_reader->metadata()->schema()->ColumnIndex(colName);
+}
+
+S PKDB::readColName(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index){
+  return ss(const_cast<char*>(row_group_reader->metadata()->schema()->Column(index)->name().c_str()));
+}
+
+K PKDB::getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows){
+    std::shared_ptr<parquet::ColumnReader> column_reader = row_group_reader->Column(index);
+    int fixedLengthByteSize = row_group_reader->metadata()->schema()->Column(index)->type_length();
+    return PREADER::readColumns(column_reader, num_rows, fixedLengthByteSize);
 }
 
 K PKDB::close(){

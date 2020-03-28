@@ -3,12 +3,14 @@
 using namespace KDB::PARQ;
 
 extern"C"{
-  K readGroup(K filename, K group){
+  K readGroup(K filename, K group, K cols){
     if(filename->t!=KC && filename->t!=-KS)
       return kerror("File name must be a string/symbol");
     if(group->t!=-KJ)
       return kerror("Group must be a long");
-    return PKDB::readGroup(k2string(filename), group->j);
+    if(cols->t!=KS && cols->n != 0)
+      return kerror("Cols must be a list of symbols");
+    return PKDB::readGroup(k2string(filename), group->j, cols);
   }
 
   K initReader(K filename){
@@ -17,11 +19,16 @@ extern"C"{
     return PKDB::loadReader(k2string(filename));
   }
 
-  K readMulti(K /*x*/){
+  K readMulti(K cols){
+    if(cols->t!=KS && cols->n != 0)
+      return kerror("Cols must be a list of symbols");
     auto instance = &PKDB::getInstance();
     if(!instance) return kerror("Parquet file not loaded");
     try {
-      return instance->readTable(instance->row_group_reader, instance->numColumns, instance->numRows);
+      return instance->readTable(instance->row_group_reader, 
+                                 cols->n ? cols->n : instance->numColumns, 
+                                 instance->numRows, 
+                                 cols);
     } catch (const std::exception& e) {
       return orr(const_cast<char*>(e.what()));
     }

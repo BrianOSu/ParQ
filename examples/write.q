@@ -56,6 +56,11 @@ t:([]
 //671 138196896
 t1~t2
 
+//Read specific columns from second row group
+\ts t3:.pq.readGroup[`t.parquet; 1; `int`bool]
+//23 2622096
+t3~neg[n1]#select int,bool from t
+
 .pq.next[]
 \ts t1,:.pq.readMulti[]
 //796 198489936

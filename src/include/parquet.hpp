@@ -14,10 +14,14 @@ namespace KDB{
                 static PKDB& getInstance(){return *instance;};
                 static K loadReader(std::string fileName);
                 static void updateMetaData();
-                static K readGroup(std::string fileName, int group);
+                static K readGroup(std::string fileName, int group, K cols);
                 static K readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader, 
                                     int num_cols,
-                                    int num_rows);
+                                    int num_rows,
+                                    K cols);
+                static int getColIndex(std::shared_ptr<parquet::RowGroupReader> row_group_reader, std::string colName);
+                static S readColName(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index);
+                static K getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows);
                 static K close();
                 static void incrementCurrentRowGroup(){instance->currentRowGroup++;};
 

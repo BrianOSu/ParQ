@@ -12,12 +12,13 @@
 // Opens and reads a given row group in the supplied parquet file.
 // @param file string/sym
 // @param group long
-.pq.readGroup:.pq.priv.libPath 2:(`readGroup;2) 
+// @param cols list of syms representing cols to read, or (::) for all
+.pq.readGroup:.pq.priv.libPath 2:(`readGroup;3) 
 
 ///
 // Opens and reads the first row group in the supplied parquet file.
 // @param file string/sym
-.pq.read:.pq.readGroup[;0j]
+.pq.read:.pq.readGroup[;0j;(::)]
 
 ///
 // Load the parquet file to make it ready for reading
@@ -26,6 +27,8 @@
 
 ///
 // Read the current row group for loaded file
+// @param cols list of syms representing cols to read, or no cols for all
+// e.g .pq.readMulti returns all cols
 .pq.readMulti:.pq.priv.libPath 2:(`readMulti;1) 
 
 ///
