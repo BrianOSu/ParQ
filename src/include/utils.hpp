@@ -14,7 +14,7 @@ typedef bool    B;
 typedef int64_t J64;
 
 extern"C"{
-std::string k2string(K x);
+    std::string k2string(K x);
 }
 
 inline const B* kB(const k0* x){ return reinterpret_cast<const B*>(x->G0); }

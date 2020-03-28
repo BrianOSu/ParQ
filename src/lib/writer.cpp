@@ -13,7 +13,7 @@ std::shared_ptr<parquet::ParquetFileWriter> WRITER::OpenFile(std::string fileNam
     return parquet::ParquetFileWriter::Open(out_file, schema, props);
 }
 
-std::shared_ptr<GroupNode> WRITER::SetupSchema(K names, K values, int numCols){
+std::shared_ptr<GroupNode> WRITER::SetupSchema(K &names, K &values, int numCols){
     parquet::schema::NodeVector fields;
     for(int i=0;i<numCols;i++)
         fields.push_back(k2parquet(kS(names)[i], kK(values)[i]));
@@ -58,7 +58,7 @@ parquet::schema::NodePtr WRITER::k2parquet(const std::string& name,K type){
     }
 }
 
-void WRITER::writeColumn(K col, parquet::RowGroupWriter* rg_writer){
+void WRITER::writeColumn(K &col, parquet::RowGroupWriter* rg_writer){
     switch(col->t){
         case KB:
             writeCol(static_cast<parquet::BoolWriter*>(rg_writer->NextColumn()), col->n, &kB(col)[0]);
