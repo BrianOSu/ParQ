@@ -17,7 +17,7 @@ namespace KDB{
             public:
                 static std::shared_ptr<parquet::ParquetFileWriter> OpenFile(std::string fileName, std::shared_ptr<GroupNode> schema, parquet::Compression::type codec);
                 static std::shared_ptr<GroupNode> SetupSchema(K &names, K &values, int numCols);
-                static parquet::schema::NodePtr k2parquet(const std::string& name, K type);
+                static parquet::schema::NodePtr k2parquet(const std::string& name, int type);
 
                 template<typename T, typename T1>static void writeCol(T writer, int len, T1 col);
                 //static void writeCol(parquet::BoolWriter* writer, int len, B* col);

@@ -88,7 +88,7 @@
 // @param t The table the write down to parquet
 // @param f The filepath as a Sym/string
 .pq.write:{[t;f]
-    .pq.priv.write[t;f;1b;.pq.priv.codec]
+    .pq.priv.write[select from t;f;1b;.pq.priv.codec]
  }
 
 ///
@@ -96,7 +96,7 @@
 // @param t The table the write down to parquet
 // @param f The filepath as a Sym/string
 .pq.writeMulti:{[t;f]
-    .pq.priv.write[t;f;0b;.pq.priv.codec]
+    .pq.priv.write[select from t;f;0b;.pq.priv.codec]
  }
 
 ///
