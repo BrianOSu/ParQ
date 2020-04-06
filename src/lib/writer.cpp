@@ -2,15 +2,15 @@
 
 using namespace KDB::PARQ;
 
-std::shared_ptr<parquet::ParquetFileWriter> WRITER::OpenFile(std::string fileName, std::shared_ptr<GroupNode> schema, parquet::Compression::type codec){
-    using FileClass = ::arrow::io::FileOutputStream;
-    std::shared_ptr<FileClass> out_file;
-    FileClass::Open(fileName, &out_file);
-
+std::shared_ptr<parquet::ParquetFileWriter> WRITER::OpenFile(std::string fileName, 
+                                                             std::shared_ptr<GroupNode> schema,
+                                                             parquet::Compression::type codec,
+                                                             bool append){
+    auto out_file = arrow::io::FileOutputStream::Open(fileName, append);
     parquet::WriterProperties::Builder builder;
     builder.compression(codec);
     std::shared_ptr<parquet::WriterProperties> props = builder.build();
-    return parquet::ParquetFileWriter::Open(out_file, schema, props);
+    return parquet::ParquetFileWriter::Open(out_file.ValueOrDie(), schema, props);
 }
 
 std::shared_ptr<GroupNode> WRITER::SetupSchema(K &names, K &values, int numCols){

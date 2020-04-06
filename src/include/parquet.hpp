@@ -50,8 +50,10 @@ namespace KDB{
                                                                                K &colValues, 
                                                                                std::string fileName,
                                                                                bool single,
-                                                                               parquet::Compression::type codec);
-                static K write(K &table, std::string fileName, bool single, parquet::Compression::type codec);
+                                                                               parquet::Compression::type codec,
+                                                                               bool append);
+                static K write(K &table, std::string fileName, bool single,
+                               parquet::Compression::type codec, bool append);
                 static K close();
 
                 std::shared_ptr<GroupNode> schema_;

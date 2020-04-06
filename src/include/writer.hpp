@@ -15,7 +15,7 @@ namespace KDB{
     namespace PARQ{
         class WRITER{
             public:
-                static std::shared_ptr<parquet::ParquetFileWriter> OpenFile(std::string fileName, std::shared_ptr<GroupNode> schema, parquet::Compression::type codec);
+                static std::shared_ptr<parquet::ParquetFileWriter> OpenFile(std::string fileName, std::shared_ptr<GroupNode> schema, parquet::Compression::type codec, bool append);
                 static std::shared_ptr<GroupNode> SetupSchema(K &names, K &values, int numCols);
                 static parquet::schema::NodePtr k2parquet(const std::string& name, int type);
 

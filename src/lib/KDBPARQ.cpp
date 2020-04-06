@@ -82,14 +82,16 @@ extern"C"{
         return kj(instance->totalRowGroups);
     }
 
-    K writer(K table, K filename, K single, K codec){
+    K writer(K table, K filename, K single, K codec, K append){
         if(filename->t!=KC && filename->t!=-KS)
             return kerror("File name must be a string/symbol");
         if(single->t!=-KB)
             return kerror("Single must be a bool");
         if(codec->t!=-KJ)
-            return kerror("Codec must be a bool between 0 and 5");
-        return PWRITE::write(table, k2string(filename), single->g, parquet::Compression::type(codec->j));
+            return kerror("Codec must be a long");
+        if(append->t!=-KB)
+            return kerror("append must be a bool");
+        return PWRITE::write(table, k2string(filename), single->g, parquet::Compression::type(codec->j), append->g);
     }
 
     K closeW(K /*x*/){

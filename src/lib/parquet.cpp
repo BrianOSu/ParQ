@@ -49,14 +49,14 @@ void PKDB::updateMetaData(){
     instance->metaData=instance->row_group_reader->metadata();
     instance->numColumns=instance->metaData->num_columns();
     instance->numRows=instance->metaData->num_rows();
-};
+}
 
 K PKDB::readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader,
                                          int num_cols,
                                          int num_rows,
                                          K cols){
     //This will hold the column names
-    K colNames=ktn(KS,num_cols);
+    K colNames = ktn(KS,num_cols);
     //This will hold column values
     K colValues = ktn(0,0);
 
@@ -64,11 +64,11 @@ K PKDB::readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader,
         int index = cols->n ? getColIndex(row_group_reader, std::string{kS(cols)[i]}) : i;
 		if(index < 0) return krr(kS(cols)[i]);
         kS(colNames)[i] = PKDB::readColName(row_group_reader, index);
-        jk(&colValues,PKDB::getColData(row_group_reader, index, num_rows));
+        jk(&colValues, PKDB::getColData(row_group_reader, index, num_rows));
     }
 
     //Return a table to the process
-    return xT(xD(colNames,colValues));
+    return xT(xD(colNames, colValues));
 }
 
 int PKDB::getColIndex(std::shared_ptr<parquet::RowGroupReader> row_group_reader, std::string colName){
@@ -80,9 +80,9 @@ S PKDB::readColName(std::shared_ptr<parquet::RowGroupReader> row_group_reader, i
 }
 
 K PKDB::getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows){
-	std::shared_ptr<parquet::ColumnReader> column_reader = row_group_reader->Column(index);
-	int fixedLengthByteSize = row_group_reader->metadata()->schema()->Column(index)->type_length();
-	return PREADER::readColumns(column_reader, num_rows, fixedLengthByteSize);
+	return PREADER::readColumns(row_group_reader->Column(index), 
+                                num_rows,
+                                row_group_reader->metadata()->schema()->Column(index)->type_length());
 }
 
 K PKDB::close(){
@@ -105,28 +105,29 @@ PWRITE::~PWRITE(){
     fileWriter_->Close();
 }
 
-std::shared_ptr<parquet::ParquetFileWriter> 
-	PWRITE::open_file_writer(K &colNames, 
-							 K &colValues, 
-							 std::string fileName,
-							 bool single,
-							 parquet::Compression::type codec){
-    if(!instance || single){
-        std::shared_ptr<GroupNode> schema = WRITER::SetupSchema(colNames, colValues, colValues->n);
-        return WRITER::OpenFile(fileName, schema, codec);
-    } else{
-            return instance->fileWriter_;
-    }
+std::shared_ptr<parquet::ParquetFileWriter> PWRITE::open_file_writer(K &colNames, 
+                                                                     K &colValues, 
+                                                                     std::string fileName,
+                                                                     bool single,
+                                                                     parquet::Compression::type codec,
+                                                                     bool append){
+    if(!instance || single)
+        return WRITER::OpenFile(fileName, WRITER::SetupSchema(colNames, colValues, colValues->n),
+                                codec, append);
+    else
+        return instance->fileWriter_;
 }
 
-K PWRITE::write(K &table, std::string fileName, bool single, parquet::Compression::type codec){
+K PWRITE::write(K &table, std::string fileName, bool single, 
+                parquet::Compression::type codec, bool append){
     try{
         K colValues=kK(table->k)[1];
         K colNames=kK(table->k)[0];
-        std::shared_ptr<parquet::ParquetFileWriter> file_writer = 
-            		open_file_writer(colNames, colValues, fileName, single, codec);
-
-        if(!instance && !single) instance = new PWRITE {file_writer};
+        std::shared_ptr<parquet::ParquetFileWriter> file_writer = open_file_writer(colNames, colValues,
+                                                                                   fileName, single,
+                                                                                   codec, append);
+        if(!instance && !single)
+            instance = new PWRITE {file_writer};
 
         parquet::RowGroupWriter* rg_writer = file_writer->AppendRowGroup();
         for(int i=0;i<colValues->n;i++)

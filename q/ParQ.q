@@ -77,26 +77,29 @@
 
 ///
 // Write a table to a parquet file
-// @param table The table the write down to parquet
-// @param filePath The filepath as a Sym/string
-// @param single Tells the writer if the file will have multiple row groups
-// @param codec The codec to compress the file with
-.pq.priv.write:.pq.priv.libPath 2:(`writer;4)
+// @param table Table to write, use select from t for splayed tables
+// @param filePath Filepath as a Sym/string, doesn't support hysm
+// @param single Write a single rowgroup, or keep file handle open for future row groups
+// @param codec Codec to compress the file with, see .pq.codecs
+// @param append Append to existing file, otherwise truncate to 0 bytes
+.pq.priv.write:.pq.priv.libPath 2:(`writer;5)
 
 ///
 // Write a table to a parquet file
-// @param t The table the write down to parquet
-// @param f The filepath as a Sym/string
+// Defaults to single row group, and doesn't append to existing
+// @param t Table to write
+// @param f Filepath as a Sym/string, doesn't support hysm
 .pq.write:{[t;f]
-    .pq.priv.write[select from t;f;1b;.pq.priv.codec]
+    .pq.priv.write[select from t;f;1b;.pq.priv.codec; 0b]
  }
 
 ///
 // Write a table to a parquet file
-// @param t The table the write down to parquet
-// @param f The filepath as a Sym/string
+// Defaults to multi row group, and doesn't append to existing
+// @param t Table to write
+// @param f Filepath as a Sym/string, doesn't support hysm
 .pq.writeMulti:{[t;f]
-    .pq.priv.write[select from t;f;0b;.pq.priv.codec]
+    .pq.priv.write[select from t;f;0b;.pq.priv.codec; 0b]
  }
 
 ///
