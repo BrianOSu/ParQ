@@ -97,9 +97,9 @@ extern double log(double);
 
 // remove more clutter
 #define O printf
-#define R return
+//#define R return
 #define Z static
-#define P(x,y) {if(x)R(y);}
+//#define P(x,y) {if(x)R(y);}
 #define U(x) P(!(x),0)
 #define SW switch
 #define CS(n,x)	case n:x;break;

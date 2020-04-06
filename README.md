@@ -15,6 +15,7 @@ LinkedIn: https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
 - kdb+
 - Apache Arrow
   * https://github.com/apache/arrow
+  * Built for ver 0.16.0 Will work with 0.14.0 but codecs will not have the correct enumeration
 
 Currently only supports linux
 

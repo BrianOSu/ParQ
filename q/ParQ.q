@@ -54,7 +54,7 @@
 
 ///
 // Define the available codecs
-.pq.codecs:(`UNCOMPRESSED`SNAPPY`GZIP`LZO`BROTLI`LZ4`ZSTD)!til 7
+.pq.codecs:(`UNCOMPRESSED`SNAPPY`GZIP`BROTLI`ZSTD`LZ4`LZO`BZ2)!til 8
 
 ///
 // Sets the compression codec for writing files
