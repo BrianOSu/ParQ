@@ -24,8 +24,10 @@ std::shared_ptr<GroupNode> WRITER::SetupSchema(K &names, K &values, int numCols)
 parquet::schema::NodePtr WRITER::k2parquet(const std::string& name,int type){
     if(type == KB)
         return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::BOOLEAN, parquet::ConvertedType::NONE);
+    #if KXVER>=3
     else if(type == UU)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::FIXED_LEN_BYTE_ARRAY, parquet::ConvertedType::NONE, 16);
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::UUID(), Type::FIXED_LEN_BYTE_ARRAY, 16);
+    #endif
     else if(type == KG)
         return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::FIXED_LEN_BYTE_ARRAY, parquet::ConvertedType::NONE, 1);
     else if(type == KH)

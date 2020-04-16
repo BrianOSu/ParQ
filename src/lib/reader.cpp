@@ -39,7 +39,14 @@ K PREADER::readColumns(std::shared_ptr<parquet::ColumnReader> column_reader,
                     return getCol(static_cast<parquet::ByteArrayReader*>(column_reader.get()), rowCount, 0, getByteCol);
             }
         case Type::FIXED_LEN_BYTE_ARRAY:
-            return getCol(static_cast<parquet::FixedLenByteArrayReader*>(column_reader.get()), rowCount, fixedLengthByteSize);
+            switch(column_reader->descr()->logical_type()->type()){
+                #if KXVER>=3
+                case parquet::LogicalType::Type::UUID:
+                    return getCol(static_cast<parquet::FixedLenByteArrayReader*>(column_reader.get()), rowCount, UU, getUUIDCol);
+                #endif
+                default:
+                    return getCol(static_cast<parquet::FixedLenByteArrayReader*>(column_reader.get()), rowCount, fixedLengthByteSize);
+            }
         default:return nullptr;
     }
 }
@@ -203,3 +210,20 @@ K PREADER::getCol(parquet::FixedLenByteArrayReader *reader, int rowCount, int fi
     }
     return res;
 }
+
+#if KXVER>=3
+K PREADER::getUUIDCol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount, 
+                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
+    K res = ktn(kType,rowCount);
+    parquet::FLBA value;
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
+    for(int i=0;i<rowCount;i++){
+        reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &value, 
+                                valid_bits.data(), 0, &levels_read, &values_read, &null_count);
+        std::copy(&value.ptr[0], &value.ptr[0]+16, kU(res)[i].g);
+    }
+    return res;
+}
+#endif

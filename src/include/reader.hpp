@@ -41,6 +41,10 @@ namespace KDB{
                 static K getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCount, 
                                       std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 static K getCol(parquet::FixedLenByteArrayReader *reader, int rowCount, int fixedLengthByteSize);
+                #if KXVER>=3
+                static K getUUIDCol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount, 
+                                    std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
+                #endif
             private:
                 PREADER(const PREADER&) = delete;
                 void operator=(const PREADER&) = delete;

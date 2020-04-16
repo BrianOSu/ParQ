@@ -90,7 +90,6 @@ t1~t2
 
 //Columns types that can't be extracted directly
 //from the parquet file due to lacking logical types
-t1:update guid:sv/:[0x00;guid] from t1
 t1:update byte:byte[;0] from t1
 t1:update char:char[;0] from t1
 t1:update syms:`$syms from t1
