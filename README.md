@@ -20,6 +20,50 @@ LinkedIn: https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
 
 Currently only supports linux
 
+### Type Mapping
+
+*Kdb -> Parquet:*
+
+| KdbType   | ParquetType          | ConvertedType | LogicalType |
+|-----------|----------------------|---------------|-------------|
+| boolean   | BOOLEAN              | NONE          |             |
+| guid      | FIXED_LEN_BYTE_ARRAY |               | UUID        |
+| byte      | FIXED_LEN_BYTE_ARRAY | NONE          |             |
+| short     | INT32                | INT_16        |             |
+| int       | INT32                | NONE          |             |
+| long      | INT64                | INT_64        |             |    
+| real      | FLOAT                | NONE          |             |
+| float     | DOUBLE               | NONE          |             |     
+| char      | BYTE_ARRAY           | UTF8          |             |
+| symbol    | BYTE_ARRAY           | UTF8          |             |
+| timestamp | INT96                | NONE          |             |
+| month     | INT32                | NONE          |             |
+| date      | INT32                | DATE          |             |
+| datetime  | DOUBLE               | NONE          |             |
+| timespan  | INT96                | NONE          |             |
+| minute    | INT32                | NONE          |             |
+| second    | INT32                | NONE          |             |
+| time      | INT32                | TIME_MILLIS   |             |
+| string/*  | BYTE_ARRAY           | UTF8          |             |
+
+*Parquet -> Kdb:*
+
+| ParquetType          | ConvertedType | LogicalType | KdbType   |
+|----------------------|---------------|-------------|-----------|
+| BOOLEAN              | NONE          |             | boolean   |
+| INT32                | NONE          |             | int       |
+| INT32                | INT_16        |             | short     |
+| INT32                | TIME_MILLIS   |             | time      |
+| INT32                | DATE          |             | date      |
+| INT64                | INT_64        |             | long      |
+| INT96                | NONE          |             | timestamp |
+| FLOAT                | NONE          |             | real      |
+| DOUBLE               | NONE          |             | float     |
+| BYTE_ARRAY           | UTF8          |             | string    |
+| BYTE_ARRAY           | NONE          |             | byte list |
+| FIXED_LEN_BYTE_ARRAY |               | UUID        | guid      |
+| FIXED_LEN_BYTE_ARRAY | NONE          |             | byte list |
+
 ### Usage instructions
 
 Start q with ParQ
