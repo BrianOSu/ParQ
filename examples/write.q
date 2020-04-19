@@ -21,7 +21,10 @@ t:([]
      month:n?`month$.z.d;
      date:n?.z.d;
      datetime:n?.z.z;
-     timespan:n?.z.n;
+     //Pyarrow doesn't like nanoseconds that don't finish with 000 (non-zero nanos)
+     //".z.n" is fine. "n?.z.n" generate non-zero nanos which is non-compatible with pyarrow
+     //https://github.com/apache/arrow/blob/edd88d7d222598550e4812c94194cbf973b20456/cpp/src/arrow/python/datetime.cc#L195
+     timespan:n#.z.n; 
      minute:n?`minute$.z.t;
      second:n?0Wv;
      time:n?.z.t)
