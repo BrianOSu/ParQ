@@ -15,41 +15,52 @@ std::shared_ptr<parquet::ParquetFileWriter> WRITER::OpenFile(std::string fileNam
 
 std::shared_ptr<GroupNode> WRITER::SetupSchema(K &names, K &values, int numCols){
     parquet::schema::NodeVector fields;
-    for(int i=0;i<numCols;i++)
-        fields.push_back(k2parquet(kS(names)[i], kK(values)[i]->t));
+    for(int i=0;i<numCols;i++){
+        int colType = kK(values)[i]->t;
+        int firstType = colType == 0? kK(kK(values)[i])[0]->t : 0;
+        fields.push_back(k2parquet(kS(names)[i], colType, firstType));
+    }
     return std::static_pointer_cast<GroupNode>(
         GroupNode::Make("schema", Repetition::REQUIRED, fields));
 }
 
-parquet::schema::NodePtr WRITER::k2parquet(const std::string& name,int type){
+parquet::schema::NodePtr WRITER::k2parquet(const std::string& name, int type, int firstType){
     if(type == KB)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::BOOLEAN, parquet::ConvertedType::NONE);
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::None(), Type::BOOLEAN);
     #if KXVER>=3
     else if(type == UU)
         return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::UUID(), Type::FIXED_LEN_BYTE_ARRAY, 16);
     #endif
     else if(type == KG)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::FIXED_LEN_BYTE_ARRAY, parquet::ConvertedType::NONE, 1);
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::None(), Type::FIXED_LEN_BYTE_ARRAY, 1);
     else if(type == KH)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::INT32, parquet::ConvertedType::INT_16);
-    else if(type == KI || type == KM || type == KU || type == KV)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::INT32, parquet::ConvertedType::NONE);
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::Int(16, true), Type::INT32);
+    else if(type == KI)
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::Int(32, true), Type::INT32);
+    else if(type == KM || type == KU || type == KV)
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::None(), Type::INT32);
     else if(type == KJ)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::INT64, parquet::ConvertedType::INT_64);
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::Int(64, true), Type::INT64);
     else if(type == KE)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::FLOAT, parquet::ConvertedType::NONE);
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::None(), Type::FLOAT);
     else if(type == KF || type == KZ)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::DOUBLE, parquet::ConvertedType::NONE);
-    else if(type == KC || type == KS || (20 <= type && type <= 76))
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::BYTE_ARRAY, parquet::ConvertedType::UTF8);
-    else if(type == KP || type == KN)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::INT96, parquet::ConvertedType::NONE);
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::None(), Type::DOUBLE);
+    else if(type == KC)
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::String(), Type::BYTE_ARRAY);
+    else if(type == KS || (20 <= type && type <= 76))
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::Enum(), Type::BYTE_ARRAY);
+    else if(type == KP)
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::Timestamp(false, LogicalType::TimeUnit::unit::NANOS), Type::INT64);
+    else if(type == KN)
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::Time(false, LogicalType::TimeUnit::unit::NANOS), Type::INT64);
     else if(type == KD)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::INT32, parquet::ConvertedType::DATE);
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::Date(), Type::INT32);
     else if(type == KT)
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::INT32, parquet::ConvertedType::TIME_MILLIS);
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::Time(false, LogicalType::TimeUnit::unit::MILLIS), Type::INT32);
+    else if(firstType == KC)
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::String(), Type::BYTE_ARRAY);
     else
-        return PrimitiveNode::Make(name, Repetition::REQUIRED, Type::BYTE_ARRAY, parquet::ConvertedType::UTF8);
+        return PrimitiveNode::Make(name, Repetition::REQUIRED, parquet::LogicalType::None(), Type::BYTE_ARRAY);
 }
 
 void WRITER::writeColumn(K &col, parquet::RowGroupWriter* rg_writer){

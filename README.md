@@ -24,45 +24,52 @@ Currently only supports linux
 
 *Kdb -> Parquet:*
 
-| KdbType   | ParquetType          | ConvertedType | LogicalType |
-|-----------|----------------------|---------------|-------------|
-| boolean   | BOOLEAN              | NONE          |             |
-| guid      | FIXED_LEN_BYTE_ARRAY |               | UUID        |
-| byte      | FIXED_LEN_BYTE_ARRAY | NONE          |             |
-| short     | INT32                | INT_16        |             |
-| int       | INT32                | NONE          |             |
-| long      | INT64                | INT_64        |             |    
-| real      | FLOAT                | NONE          |             |
-| float     | DOUBLE               | NONE          |             |     
-| char      | BYTE_ARRAY           | UTF8          |             |
-| symbol    | BYTE_ARRAY           | UTF8          |             |
-| timestamp | INT96                | NONE          |             |
-| month     | INT32                | NONE          |             |
-| date      | INT32                | DATE          |             |
-| datetime  | DOUBLE               | NONE          |             |
-| timespan  | INT96                | NONE          |             |
-| minute    | INT32                | NONE          |             |
-| second    | INT32                | NONE          |             |
-| time      | INT32                | TIME_MILLIS   |             |
-| string/*  | BYTE_ARRAY           | UTF8          |             |
+| KdbType   | ParquetType          | LogicalType       |
+|-----------|----------------------|-------------------|
+| boolean   | BOOLEAN              | None              |
+| guid      | FIXED_LEN_BYTE_ARRAY | UUID              |
+| byte      | FIXED_LEN_BYTE_ARRAY | None(size 1)      |
+| short     | INT32                | (16, signed)      |
+| int       | INT32                | (32, signed)      |
+| long      | INT64                | (64, signed)      |    
+| real      | FLOAT                | None              |
+| float     | DOUBLE               | None              |     
+| char      | BYTE_ARRAY           | String            |
+| string    | BYTE_ARRAY           | String            |
+| symbol    | BYTE_ARRAY           | Enum              |
+| timestamp | INT64                | Timestamp(Nanos)  |
+| month     | INT32                | None              |
+| date      | INT32                | Date              |
+| datetime  | DOUBLE               | None              |
+| timespan  | INT64                | Time(Nanos)       |
+| minute    | INT32                | None              |
+| second    | INT32                | None              |
+| time      | INT32                | Time(Millis)      |
+| *         | BYTE_ARRAY           | None              |
 
 *Parquet -> Kdb:*
 
-| ParquetType          | ConvertedType | LogicalType | KdbType   |
-|----------------------|---------------|-------------|-----------|
-| BOOLEAN              | NONE          |             | boolean   |
-| INT32                | NONE          |             | int       |
-| INT32                | INT_16        |             | short     |
-| INT32                | TIME_MILLIS   |             | time      |
-| INT32                | DATE          |             | date      |
-| INT64                | INT_64        |             | long      |
-| INT96                | NONE          |             | timestamp |
-| FLOAT                | NONE          |             | real      |
-| DOUBLE               | NONE          |             | float     |
-| BYTE_ARRAY           | UTF8          |             | string    |
-| BYTE_ARRAY           | NONE          |             | byte list |
-| FIXED_LEN_BYTE_ARRAY |               | UUID        | guid      |
-| FIXED_LEN_BYTE_ARRAY | NONE          |             | byte list |
+| ParquetType          | LogicalType      | KdbType   |
+|----------------------|------------------|-----------|
+| BOOLEAN              | None             | boolean   |
+| INT32                | None             | int       |
+| INT32                | (16, signed)     | short     |
+| INT32                | TIME             | time      |
+| INT32                | DATE             | date      |
+| INT64                | None             | long      |
+| INT64                | TIMESTAMP(Nanos) | timestamp |
+| INT64                | TIME(NANOS)      | timespan  |
+| INT96                | None             | timestamp |
+| FLOAT                | None             | real      |
+| DOUBLE               | None             | float     |
+| BYTE_ARRAY           | String           | string    |
+| BYTE_ARRAY           | Enum             | sym       |
+| BYTE_ARRAY           | None             | byte list |
+| FIXED_LEN_BYTE_ARRAY | UUID             | guid      |
+| FIXED_LEN_BYTE_ARRAY | Byte length = 1  | byte      |
+| FIXED_LEN_BYTE_ARRAY | None             | byte list |
+
+If the logical type is not in the above list, ParQ will default to treating it as None.
 
 ### Usage instructions
 
@@ -136,24 +143,25 @@ q).pq.load`t.parquet
 q).pq.schema[]
 "message schema {"
 "  required boolean bool;"
-"  required fixed_len_byte_array(16) guid;"
+"  required fixed_len_byte_array(16) guid (UUID);"
 "  required fixed_len_byte_array(1) byte;"
 "  required int32 short (Int(bitWidth=16, isSigned=true));"
-"  required int32 int;"
+"  required int32 int (Int(bitWidth=32, isSigned=true));"
 "  required int64 long (Int(bitWidth=64, isSigned=true));"
 "  required float real;"
 "  required double float;"
 "  required binary char (String);"
-"  required binary syms (String);"
+"  required binary syms (Enum);"
 "  required binary strings (String);"
-"  required int96 timestamp;"
+"  required int64 timestamp (Timestamp(isAdjustedToUTC=false, timeUnit=nanoseconds, is_from_converted_type=false, force_set_converted_type=false));"
 "  required int32 month;"
 "  required int32 date (Date);"
 "  required double datetime;"
-"  required int96 timespan;"
+"  required int64 timespan (Time(isAdjustedToUTC=false, timeUnit=nanoseconds));"
 "  required int32 minute;"
 "  required int32 second;"
-"  required int32 time (Time(isAdjustedToUTC=true, timeUnit=milliseconds));"
+"  required int32 time (Time(isAdjustedToUTC=false, timeUnit=milliseconds));"
+"}"
 //Read only the float and int columns
 q).pq.readMulti[`float`int]
 float    int       
@@ -167,11 +175,11 @@ q).pq.close[]
 1b
 //Read guid, bool and int column from first row group
 q).pq.readGroup[`t.parquet; 0; `guid`bool`int]
-guid                               bool int       
---------------------------------------------------
-0x5898462e1abb80d7f7bd9a7d931aba9d 1    973227945 
-0x1db424985c3ebdff38d6578aa052f23d 1    2131280630
-0xd6cc4cd6919d1dc8921bc7dce7b481ee 0    989873294 
+guid                                 bool int       
+----------------------------------------------------
+a0d3e6c6-9bfa-3936-8fec-94bd844b4a20 1    963573298 
+39f24b49-8d5c-fa51-97bc-e2689b52f052 0    467447548 
+3c669a3f-7071-f3e4-142f-8bbb684d299d 0    1302452830
 ..
 //Read int,bool and time column from first row group
 q).pq.readGroup[`t.parquet; 0; `int`bool`time]
@@ -184,7 +192,7 @@ int        bool time
 ```
 ### Compression
 
-[All parquet compression codecs are supported. ](https://github.com/apache/parquet-format/blob/54e6133e887a6ea90501ddd72fff5312b7038a7c/src/main/thrift/parquet.thrift#L461)
+[All parquet compression codecs are supported. ](https://github.com/apache/parquet-format/blob/master/src/main/thrift/parquet.thrift#L32)
 
 Compression can be set using the following:
 ```q
@@ -192,13 +200,14 @@ q).pq.codecs
 UNCOMPRESSED| 0
 SNAPPY      | 1
 GZIP        | 2
-LZO         | 3
-BROTLI      | 4
+BROTLI      | 3
+ZSTD        | 4
 LZ4         | 5
-ZSTD        | 6
+LZO         | 6
+BZ2         | 7
 q).pq.setCodec[`ZSTD]
 q).pq.getCodec[]
-`UNCOMPRZSTDESSED
+`ZSTD
 ```
 
 By default, compression is set to ZSTD. From testing, its results have been extremely promissing.

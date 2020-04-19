@@ -80,9 +80,7 @@ S PKDB::readColName(std::shared_ptr<parquet::RowGroupReader> row_group_reader, i
 }
 
 K PKDB::getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows){
-	return PREADER::readColumns(row_group_reader->Column(index), 
-                                num_rows,
-                                row_group_reader->metadata()->schema()->Column(index)->type_length());
+	return PREADER::readColumns(row_group_reader->Column(index), num_rows);
 }
 
 K PKDB::close(){

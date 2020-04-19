@@ -33,9 +33,9 @@ t:([]
 
 //Write the above file to parquet as 2 row groups
 \ts .pq.writeMulti[n1#t;`t.parquet]
-//1779 55051136
+//1721 55051136
 \ts .pq.writeMulti[neg[n1]#t; `t.parquet]
-//1747 55051200
+//1688 55051200
 
 //Close the writer to avoid corrupt footer
 .pq.closeWriter[]
@@ -49,11 +49,11 @@ t:([]
 
 //Read the first half of the parquet file
 \ts t1:.pq.readMulti[]
-//460 138196848
+//376 90721136
 
 //Open and read the first half of the file only
 \ts t2:.pq.read`t.parquet
-//474 138196960
+//393 90721248
 t1~t2
 
 //Read specific columns from second row group
@@ -63,7 +63,7 @@ t3~neg[n1]#select int,bool from t
 
 .pq.next[]
 \ts t1,:.pq.readMulti[]
-//557 198489936
+//452 151538512
 
 //Close the file when done reading
 .pq.close[]
@@ -75,11 +75,11 @@ t3~neg[n1]#select int,bool from t
 
 //Write down a table with a single row group only
 \ts .pq.write[t;`t1.parquet]
-//3162 960
+//3068 960
 
 //Open and read the entire file
 \ts t2:.pq.read`t1.parquet
-//919 276392928
+//744 181441504
 t1~t2
 
 
@@ -90,12 +90,9 @@ t1~t2
 
 //Columns types that can't be extracted directly
 //from the parquet file due to lacking logical types
-t1:update byte:byte[;0] from t1
 t1:update char:char[;0] from t1
-t1:update syms:`$syms from t1
 t1:update month:`month$month from t1
 t1:update datetime:`datetime$datetime from t1
-t1:update timespan:`timespan$timespan from t1
 t1:update minute:`minute$minute from t1
 t1:update second:`second$second from t1
 t~t1
