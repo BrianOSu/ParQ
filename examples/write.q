@@ -2,7 +2,9 @@
 // Set the environment variables and table
 //------------------------------------------------------
 
+//Set total table length
 n:1000000
+//Set how many rows will go into each rowgroup
 n1:"i"$n%2
 
 t:([]
@@ -21,9 +23,9 @@ t:([]
      month:n?`month$.z.d;
      date:n?.z.d;
      datetime:n?.z.z;
-     //Pyarrow doesn't like nanoseconds that don't finish with 000 (non-zero nanos)
-     //".z.n" is fine. "n?.z.n" generate non-zero nanos which is non-compatible with pyarrow
-     //https://github.com/apache/arrow/blob/edd88d7d222598550e4812c94194cbf973b20456/cpp/src/arrow/python/datetime.cc#L195
+     // Pyarrow doesn't like nanoseconds that don't finish with 000 (non-zero nanos)
+     // ".z.n" works. "n?.z.n" generates non-zero nanos which are non-compatible with pyarrow
+     // https://github.com/apache/arrow/blob/edd88d7d222598550e4812c94194cbf973b20456/cpp/src/arrow/python/datetime.cc#L195
      timespan:n#.z.n; 
      minute:n?`minute$.z.t;
      second:n?0Wv;

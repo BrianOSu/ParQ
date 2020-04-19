@@ -134,6 +134,14 @@ q).pq.next[]
 q).pq.close[]
 1b
 ```
+Multi-threaded rowgroup reading using peach with slaves
+```q
+q).pq.load[`t.parquet]
+1b
+q)t:raze .pq.readGroup[`t.parquet;;(::)] peach til .pq.totalRowGroup[]
+q).pq.close[]
+1b
+```
 It is much quicker to read specific columns into memory if you don't need the full table.
 ```q
 //Load the table
