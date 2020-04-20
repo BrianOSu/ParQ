@@ -118,23 +118,16 @@ void WRITER::writeCol(T writer, int len, T1 col){
 
 #if KXVER>=3
 void WRITER::writeGuidCol(parquet::FixedLenByteArrayWriter* writer, K col){
-    for (int i = 0; i < col->n; i++) {
-        parquet::FixedLenByteArray value(kU(col)[i].g);
-        writer->WriteBatch(1, nullptr, nullptr, &value);
-    }
+    writer->WriteBatch(col->n, nullptr, nullptr, &std::vector<parquet::FixedLenByteArray>(&kU(col)->g, &kU(col)->g + col->n)[0]);
 }
 #endif
 
 void WRITER::writeByteCol(parquet::FixedLenByteArrayWriter* writer, K col){
-    for (int i = 0; i < col->n; i++) {
-        parquet::FixedLenByteArray value(&kG(col)[i]);
-        writer->WriteBatch(1, nullptr, nullptr, &value);
-    }
+    writer->WriteBatch(col->n, nullptr, nullptr, &std::vector<parquet::FixedLenByteArray>(&kG(col), &kG(col) + col->n)[0]);
 }
 
 void WRITER::writeShortCol(parquet::Int32Writer* writer, K col){
-    for (int i = 0; i < col->n; i++)
-        writer->WriteBatch(1, nullptr, nullptr, reinterpret_cast<int32_t*>(&kH(col)[i]));
+    writer->WriteBatch(col->n, nullptr, nullptr, &std::vector<int32_t>(&kH(col)[0], &kH(col)[0] + col->n)[0]);
 }
 
 void WRITER::writeCol(parquet::Int96Writer* writer, K col){
