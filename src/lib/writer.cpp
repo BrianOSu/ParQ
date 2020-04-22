@@ -93,7 +93,7 @@ void WRITER::writeColumn(K &col, parquet::RowGroupWriter* rg_writer){
         writeShortCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col);
     else if(type == KI || type == KM || type == KD || type == KU || type == KV || type == KT)
         writeCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col->n, &kI(col)[0]);
-    else if(type == KJ)
+    else if(type == KJ | type == KP || type == KN)
         writeCol(static_cast<parquet::Int64Writer*>(rg_writer->NextColumn()), col->n, &kJ64(col)[0]);
     else if(type == KE)
         writeCol(static_cast<parquet::FloatWriter*>(rg_writer->NextColumn()), col->n, &kE(col)[0]);
@@ -103,8 +103,6 @@ void WRITER::writeColumn(K &col, parquet::RowGroupWriter* rg_writer){
         writeCharCol(static_cast<parquet::ByteArrayWriter*>(rg_writer->NextColumn()), col);
     else if(type == KS)
         writeSymCol(static_cast<parquet::ByteArrayWriter*>(rg_writer->NextColumn()), col);
-    else if(type == KP || type == KN)
-        writeCol(static_cast<parquet::Int96Writer*>(rg_writer->NextColumn()), col);
     else if(20 <= type && type <= 76)
         writeSymCol(static_cast<parquet::ByteArrayWriter*>(rg_writer->NextColumn()), d9(b9(-1,col)));
     else
@@ -117,20 +115,20 @@ void WRITER::writeCol(T writer, int len, T1 col){
 }
 
 #if KXVER>=3
-void WRITER::writeGuidCol(parquet::FixedLenByteArrayWriter* writer, K col){
+void WRITER::writeGuidCol(parquet::FixedLenByteArrayWriter* writer, K &col){
     writer->WriteBatch(col->n, nullptr, nullptr, &std::vector<parquet::FixedLenByteArray>(&kU(col)->g, &kU(col)->g + col->n)[0]);
 }
 #endif
 
-void WRITER::writeByteCol(parquet::FixedLenByteArrayWriter* writer, K col){
+void WRITER::writeByteCol(parquet::FixedLenByteArrayWriter* writer, K &col){
     writer->WriteBatch(col->n, nullptr, nullptr, &std::vector<parquet::FixedLenByteArray>(&kG(col), &kG(col) + col->n)[0]);
 }
 
-void WRITER::writeShortCol(parquet::Int32Writer* writer, K col){
+void WRITER::writeShortCol(parquet::Int32Writer* writer, K &col){
     writer->WriteBatch(col->n, nullptr, nullptr, &std::vector<int32_t>(&kH(col)[0], &kH(col)[0] + col->n)[0]);
 }
 
-void WRITER::writeCol(parquet::Int96Writer* writer, K col){
+void WRITER::writeCol(parquet::Int96Writer* writer, K &col){
     for (int i = 0; i < col->n; i++){
         parquet::Int96 value;
         //Magic number that adjusts for julian days
@@ -140,23 +138,35 @@ void WRITER::writeCol(parquet::Int96Writer* writer, K col){
     }
 }
 
-void WRITER::writeCharCol(parquet::ByteArrayWriter* writer, K col){
-    for (int i = 0; i < col->n; i++) {
-        parquet::ByteArray value(1,&kG(col)[i]);
-        writer->WriteBatch(1, nullptr, nullptr, &value);
-    }
+void WRITER::writeCharCol(parquet::ByteArrayWriter* writer, K &col){
+    writer->WriteBatch(col->n, nullptr, nullptr, &byteToVec(col)[0]);
+}
+
+std::vector<parquet::ByteArray> WRITER::byteToVec(K &col){
+    std::vector<parquet::ByteArray> buffer;
+    for(int i=0; i<col->n; i++)
+        buffer.push_back(parquet::ByteArray(1,&kG(col)[i]));
+    return buffer;
 }
 
 void WRITER::writeSymCol(parquet::ByteArrayWriter* writer, K col){
-    for (int i = 0; i < col->n; i++) {
-        parquet::ByteArray value(std::string(kS(col)[i]).length(),reinterpret_cast<unsigned char*>(kS(col)[i]));
-        writer->WriteBatch(1, nullptr, nullptr, &value);
-    }
+    writer->WriteBatch(col->n, nullptr, nullptr, &stringToVec(col)[0]);
 }
 
-void WRITER::writeCol(parquet::ByteArrayWriter* writer, K col){
-    for (int i = 0; i < col->n; i++) {
-        parquet::ByteArray value(kK(col)[i]->n,kG(kK(col)[i]));
-        writer->WriteBatch(1, nullptr, nullptr, &value);
-    }
+std::vector<parquet::ByteArray> WRITER::stringToVec(K &col){
+    std::vector<parquet::ByteArray> buffer;
+    for(int i=0; i<col->n; i++)
+        buffer.push_back(parquet::ByteArray(std::string(kS(col)[i]).length(),reinterpret_cast<unsigned char*>(kS(col)[i])));
+    return buffer;
+}
+
+void WRITER::writeCol(parquet::ByteArrayWriter* writer, K &col){
+    writer->WriteBatch(col->n, nullptr, nullptr, &kToVec(col)[0]);
+}
+
+std::vector<parquet::ByteArray> WRITER::kToVec(K &col){
+    std::vector<parquet::ByteArray> buffer;
+    for(int i=0; i<col->n; i++)
+        buffer.push_back(parquet::ByteArray(kK(col)[i]->n,kG(kK(col)[i])));
+    return buffer;
 }
