@@ -119,6 +119,7 @@ t~t1
 //import pyarrow as pa
 //import pyarrow.parquet as pq
 //table = pq.read_table('t.parquet')
+//table.schema
 //table.to_pandas()
 
 //import pandas as pd

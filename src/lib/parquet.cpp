@@ -119,27 +119,28 @@ PWRITE::~PWRITE(){
     fileWriter_->Close();
 }
 
-std::shared_ptr<parquet::ParquetFileWriter> PWRITE::open_file_writer(K &colNames, 
-                                                                     K &colValues, 
+std::shared_ptr<parquet::ParquetFileWriter> PWRITE::open_file_writer(K colNames, 
+                                                                     K colValues, 
                                                                      std::string fileName,
                                                                      bool single,
                                                                      parquet::Compression::type codec,
-                                                                     bool append){
+                                                                     bool append,
+                                                                     K metadata){
     if(!instance || single)
         return WRITER::OpenFile(fileName, WRITER::SetupSchema(colNames, colValues, colValues->n),
-                                codec, append);
+                                codec, append, metadata);
     else
         return instance->fileWriter_;
 }
 
-K PWRITE::write(K &table, std::string fileName, bool single, 
-                parquet::Compression::type codec, bool append){
+K PWRITE::write(K table, std::string fileName, bool single, 
+                parquet::Compression::type codec, bool append, K metadata){
     try{
         K colValues=kK(table->k)[1];
         K colNames=kK(table->k)[0];
         std::shared_ptr<parquet::ParquetFileWriter> file_writer = open_file_writer(colNames, colValues,
                                                                                    fileName, single,
-                                                                                   codec, append);
+                                                                                   codec, append, metadata);
         if(!instance && !single)
             instance = new PWRITE {file_writer};
 

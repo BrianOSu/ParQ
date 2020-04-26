@@ -62,14 +62,15 @@ namespace KDB{
                 ~PWRITE();
 
                 static PWRITE& getInstance(){return *instance;};
-                static std::shared_ptr<parquet::ParquetFileWriter> open_file_writer(K &colNames, 
-                                                                               K &colValues, 
-                                                                               std::string fileName,
-                                                                               bool single,
-                                                                               parquet::Compression::type codec,
-                                                                               bool append);
-                static K write(K &table, std::string fileName, bool single,
-                               parquet::Compression::type codec, bool append);
+                static std::shared_ptr<parquet::ParquetFileWriter> open_file_writer(K colNames, 
+                                                                                    K colValues, 
+                                                                                    std::string fileName,
+                                                                                    bool single,
+                                                                                    parquet::Compression::type codec,
+                                                                                    bool append,
+                                                                                    K metadata);
+                static K write(K table, std::string fileName, bool single,
+                               parquet::Compression::type codec, bool append, K metadata);
                 static K close();
 
                 std::shared_ptr<GroupNode> schema_;

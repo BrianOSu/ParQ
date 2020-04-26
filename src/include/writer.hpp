@@ -31,25 +31,30 @@ namespace KDB{
     namespace PARQ{
         class WRITER{
             public:
-                static std::shared_ptr<parquet::ParquetFileWriter> OpenFile(std::string fileName, std::shared_ptr<GroupNode> schema, parquet::Compression::type codec, bool append);
-                static std::shared_ptr<GroupNode> SetupSchema(K &names, K &values, int numCols);
+                static std::shared_ptr<arrow::KeyValueMetadata> KeyValueMetadata(K metadata);
+                static std::shared_ptr<parquet::ParquetFileWriter> OpenFile(std::string fileName,
+                                                                            std::shared_ptr<GroupNode> schema, 
+                                                                            parquet::Compression::type codec, 
+                                                                            bool append, 
+                                                                            K metadata);
+                static std::shared_ptr<GroupNode> SetupSchema(K names, K values, int numCols);
                 static parquet::schema::NodePtr k2parquet(const std::string& name, int type, int firstType);
 
                 template<typename T, typename T1>static void writeCol(T writer, int len, T1 col);
                 //static void writeCol(parquet::BoolWriter* writer, int len, B* col);
                 #if KXVER>=3
-                static void writeGuidCol(parquet::FixedLenByteArrayWriter* writer, K &col);
+                static void writeGuidCol(parquet::FixedLenByteArrayWriter* writer, K col);
                 #endif
-                static void writeByteCol(parquet::FixedLenByteArrayWriter* writer, K &col);
-                static void writeShortCol(parquet::Int32Writer* writer, K &col);
-                static void writeCol(parquet::Int96Writer* writer, K &col);
-                static void writeCharCol(parquet::ByteArrayWriter* writer, K &col);
+                static void writeByteCol(parquet::FixedLenByteArrayWriter* writer, K col);
+                static void writeShortCol(parquet::Int32Writer* writer, K col);
+                static void writeCol(parquet::Int96Writer* writer, K col);
+                static void writeCharCol(parquet::ByteArrayWriter* writer, K col);
                 static void writeSymCol(parquet::ByteArrayWriter* writer, K col);
-                static void writeCol(parquet::ByteArrayWriter* writer, K &col);
-                static void writeColumn(K &col, parquet::RowGroupWriter* rg_writer);
-                static std::vector<parquet::ByteArray> byteToVec(K &col);
-                static std::vector<parquet::ByteArray> stringToVec(K &col);
-                static std::vector<parquet::ByteArray> kToVec(K &col);
+                static void writeCol(parquet::ByteArrayWriter* writer, K col);
+                static void writeColumn(K col, parquet::RowGroupWriter* rg_writer);
+                static std::vector<parquet::ByteArray> byteToVec(K col);
+                static std::vector<parquet::ByteArray> stringToVec(K col);
+                static std::vector<parquet::ByteArray> kToVec(K col);
         };
     }
 }

@@ -19,6 +19,7 @@
 
 #include <k.h>
 #include <iostream>
+#include <vector>
 
 //Undefine these fro k.h to use a C++ style equivalent.
 #ifdef KX
@@ -31,6 +32,7 @@ typedef int64_t J64;
 
 extern"C"{
     std::string k2string(K x);
+    std::vector<std::string> k2StrVec(K x);
 }
 
 inline const B* kB(const k0* x){ return reinterpret_cast<const B*>(x->G0); }
