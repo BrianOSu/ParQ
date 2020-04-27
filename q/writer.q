@@ -30,27 +30,27 @@
 // Define the available codecs
 // https://github.com/apache/arrow/blob/master/cpp/src/arrow/util/compression.h#L33
 // Parquet doesn't neccessarily support all of these
-.pq.codecs:(`UNCOMPRESSED`SNAPPY`GZIP`BROTLI`ZSTD`LZ4`LZ4_FRAME`LZO`BZ2)!til 9
+.pq.write.codecs:(`UNCOMPRESSED`SNAPPY`GZIP`BROTLI`ZSTD`LZ4`LZ4_FRAME`LZO`BZ2)!til 9
 
 ///
 // Sets the compression codec for writing files
 // @param  Codec - Sym from .pq.codecs
-.pq.setCodec:{[codec]
+.pq.write.setCodec:{[codec]
     if[not -11h~type codec;
         '"Codec must be a sym"];
-    if[not codec in key .pq.codecs;
+    if[not codec in key .pq.write.codecs;
         '"Codec must exist in .pq.codecs"];
-    .pq.priv.codec:.pq.codecs[codec];
+    .pq.priv.codec:.pq.write.codecs[codec];
  }
 
 ///
 // Set defaults codec to ZSTD
-.pq.setCodec[`ZSTD]
+.pq.write.setCodec[`ZSTD]
 
 ///
 // Returns the compression the codec is set to
 // @return Sym - The default codec to write with
-.pq.getCodec:{.pq.codecs?.pq.priv.codec}
+.pq.write.getCodec:{.pq.write.codecs?.pq.priv.codec}
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -74,7 +74,7 @@
 // @param  Table    - Table to write
 // @param  FilePath - Filepath as a Sym/string, doesn't support hysm
 // @return Bool     - 1b if writes, otherwise throws error
-.pq.writeMulti:{[t;f]
+.pq.write.multi:{[t;f]
     .pq.priv.write[select from t;f;0b;.pq.priv.codec;(::)]
  }
 
@@ -85,14 +85,14 @@
 // @param  FilePath   - Filepath as a Sym/string, doesn't support hysm
 // @param  KVMetadata - Dictionary of strings/symbols to write key value meta data
 // @return Bool       - 1b if writes, otherwise throws error
-.pq.writeMultiMeta:{[t;f;m]
+.pq.write.multiMeta:{[t;f;m]
     .pq.priv.write[select from t;f;0b;.pq.priv.codec;m]
  }
 
 ///
 // Close the loaded parquet file
 // @return Bool - 1b if closes, otherwise throws error
-.pq.closeWriter:.pq.priv.libPath 2:(`closeW;1) 
+.pq.write.close:.pq.priv.libPath 2:(`closeW;1) 
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -105,7 +105,7 @@
 // @param  Table    - Table to write
 // @param  FilePath - Filepath as a Sym/string, doesn't support hysm
 // @return Bool     - 1b if writes, otherwise throws error
-.pq.write:{[t;f]
+.pq.write.single:{[t;f]
     .pq.priv.write[select from t;f;1b;.pq.priv.codec;(::)]
  }
 
@@ -117,6 +117,6 @@
 //                    Otherwise keep file handle open for future row groups
 // @param  KVMetadata - Dictionary of strings or symbols to write key value meta data
 // @return Bool     - 1b if writes, otherwise throws error
-.pq.writeMeta:{[t;f;m]
+.pq.write.singleMeta:{[t;f;m]
     .pq.priv.write[select from t;f;1b;.pq.priv.codec;m]
  }

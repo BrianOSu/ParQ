@@ -31,13 +31,13 @@
 // @param  Group - Long representing the rowgroup to read
 // @param  Cols  - Sym list representing columns to read, or (::) for all
 // @return Table - Data extracted from the parquet file
-.pq.readGroup:.pq.priv.libPath 2:(`readGroup;3) 
+.pq.read.group:.pq.priv.libPath 2:(`readGroup;3) 
 
 ///
 // Opens and reads the first row group in the supplied parquet file.
 // @param  File  - String/sym
 // @return Table - Data extracted from the parquet file
-.pq.read:.pq.readGroup[;0j;(::)]
+.pq.read.first:.pq.read.group[;0j;(::)]
 
 
 
@@ -50,42 +50,42 @@
 // and extracting certain information from it
 // @param  File - String/sym
 // @return Bool - 1b if loads, otherwise throws error
-.pq.load:.pq.priv.libPath 2:(`initReader;1) 
+.pq.read.load:.pq.priv.libPath 2:(`initReader;1) 
 
 ///
 // Close the currently loaded parquet file
 // @return Bool - 1b if closes, otherwise throws error
-.pq.close:.pq.priv.libPath 2:(`closeP;1)
+.pq.read.close:.pq.priv.libPath 2:(`closeP;1)
 
 ///
 // Returns the current row group being pointed at by the loaded file
 // @return Long - Row group,  otherwise throws error
-.pq.rowGroup:.pq.priv.libPath 2:(`currentRowGroup;1) 
+.pq.read.rowGroup:.pq.priv.libPath 2:(`currentRowGroup;1) 
 
 ///
 // Moves to next row group for reading
 // @return Bool - 1b if moves, otherwise throws error
-.pq.next:.pq.priv.libPath 2:(`nextRowGroup;1)
+.pq.read.next:.pq.priv.libPath 2:(`nextRowGroup;1)
 
 ///
 // Returns the total number of row groups in the loaded file
 // @return Long - Total row groups,  otherwise throws error
-.pq.totalRowGroup:.pq.priv.libPath 2:(`totalRowGroup;1) 
+.pq.read.totalRowGroup:.pq.priv.libPath 2:(`totalRowGroup;1) 
 
 ///
 // Reads the current row group for loaded file
 // @param  Cols  - Sym list representing columns to read. 
 //                 (::) or left blank returns all cols
 // @return Table - Data extracted from the parquet file
-.pq.readMulti:.pq.priv.libPath 2:(`readMulti;1) 
+.pq.read.multi:.pq.priv.libPath 2:(`readMulti;1) 
 
 ///
 // Returns the schema from the currently loaded parquet file
 // @return String list - The schema coming directly from the parquet file
 .pq.priv.schema:.pq.priv.libPath 2:(`readSchema;1)
-.pq.schema:{[] -1_"\n" vs .pq.priv.schema[]}
+.pq.read.schema:{[] -1_"\n" vs .pq.priv.schema[]}
 
 ///
 // Read the key-value-metadata for loaded file
 // @return Dictionary - Key Values. Empty dict if key value metadata doesn't exist
-.pq.keyValueMeta:.pq.priv.libPath 2:(`readKeyValueMetadata;1)
+.pq.read.keyValueMeta:.pq.priv.libPath 2:(`readKeyValueMetadata;1)
