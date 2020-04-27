@@ -42,6 +42,7 @@ namespace KDB{
                 static void incrementCurrentRowGroup(){instance->currentRowGroup++;};
 
                 std::shared_ptr<parquet::ParquetFileReader> filerReader_;
+                std::shared_ptr<const parquet::KeyValueMetadata> key_value_metadata;
                 std::shared_ptr<parquet::RowGroupReader> row_group_reader;
                 const parquet::RowGroupMetaData* metaData;
                 int numColumns;

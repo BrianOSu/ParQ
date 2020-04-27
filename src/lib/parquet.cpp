@@ -26,6 +26,7 @@ PKDB::PKDB(std::shared_ptr<parquet::ParquetFileReader> filerReader)
     //When opening files, point at the first row group
     currentRowGroup=0;
     row_group_reader=filerReader_->RowGroup(currentRowGroup);
+    key_value_metadata=filerReader_->metadata()->key_value_metadata();
     totalRowGroups=filerReader_->metadata()->num_row_groups();
 }
 

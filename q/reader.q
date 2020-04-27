@@ -84,3 +84,8 @@
 // @return String list - The schema coming directly from the parquet file
 .pq.priv.schema:.pq.priv.libPath 2:(`readSchema;1)
 .pq.schema:{[] -1_"\n" vs .pq.priv.schema[]}
+
+///
+// Read the key-value-metadata for loaded file
+// @return Dictionary - Key Values. Empty dict if key value metadata doesn't exist
+.pq.keyValueMeta:.pq.priv.libPath 2:(`readKeyValueMetadata;1)

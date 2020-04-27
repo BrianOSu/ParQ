@@ -15,8 +15,8 @@ LinkedIn: https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
 - kdb+
 - Apache Arrow
   * https://github.com/apache/arrow
-  * Built for ver 0.16.0
-  * 0.14.0 codec dictionary will be incorrect
+  * Built for ver 0.17.0
+  * Older versions codec dictionary will be incorrect
 
 Currently only supports linux
 
@@ -198,6 +198,26 @@ int        bool time
 989873294  0    00:07:32.442
 ..
 ```
+### Key Value Metadata
+
+ParQ allows users to write their own key-value metadata. This can used to indicate which datatype the column originated in.
+
+Available functions are:
+  * .pq.writeMeta
+  * .pq.writeMultiMeta
+  * .pq.keyValueMeta
+
+```q
+q)t:([]date:10?.z.d; price:10?100)
+q).pq.writeMeta[t; "t.parquet"; (`date`price)!(`date`long)]
+1b
+q).pq.load"t.parquet"
+1b
+q).pq.keyValueMeta[]
+date | date
+price| long
+```
+
 ### Compression
 
 [All parquet compression codecs are supported. ](https://github.com/apache/parquet-format/blob/master/src/main/thrift/parquet.thrift#L32)

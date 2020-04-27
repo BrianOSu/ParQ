@@ -69,8 +69,25 @@ extern"C"{
         auto instance = &PKDB::getInstance();
         if(!instance) return kerror("Parquet file not loaded");
         try {
-            std::string schema = instance->metaData->schema()->ToString();
-            return kp(const_cast<char*>(schema.c_str()));
+            return string2k(instance->metaData->schema()->ToString());
+        } catch (const std::exception& e) {
+            return orr(const_cast<char*>(e.what()));
+        }
+    }
+
+    K readKeyValueMetadata(K /*x*/){
+        auto instance = &PKDB::getInstance();
+        if(!instance) return kerror("Parquet file not loaded");
+        try {
+            K key = ktn(KS, 0);
+            K value = ktn(KS, 0);
+            if(instance->key_value_metadata){
+                for(auto kv : instance->key_value_metadata->sorted_pairs()) {
+                    js(&key,ss((char*)kv.first.c_str()));
+                    js(&value,ss((char*)kv.second.c_str()));
+                }
+            }
+            return xD(key,value);
         } catch (const std::exception& e) {
             return orr(const_cast<char*>(e.what()));
         }

@@ -33,6 +33,7 @@ typedef int64_t J64;
 extern"C"{
     std::string k2string(K x);
     std::vector<std::string> k2StrVec(K x);
+    K string2k(std::string x);
 }
 
 inline const B* kB(const k0* x){ return reinterpret_cast<const B*>(x->G0); }

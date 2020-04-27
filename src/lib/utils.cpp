@@ -41,3 +41,7 @@ std::vector<std::string> k2StrVec(K x){
     }
     return vec;
 }
+
+K string2k(std::string x){
+    return kp(const_cast<char*>(x.c_str()));
+}
