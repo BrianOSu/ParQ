@@ -30,7 +30,7 @@ K PREADER::readColumns(std::shared_ptr<parquet::ColumnReader> column_reader,
         case Type::INT32:
             switch(column_reader->descr()->logical_type()->type()){
                 case parquet::LogicalType::Type::DATE:
-                    return getCol(static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, KD, getIntCol);
+                    return getCol(static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, KD, getDateCol);
                 case parquet::LogicalType::Type::TIME:
                     return getCol(static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, KT, getIntCol);
                 case parquet::LogicalType::Type::INT:
@@ -43,7 +43,7 @@ K PREADER::readColumns(std::shared_ptr<parquet::ColumnReader> column_reader,
             switch(column_reader->descr()->logical_type()->type()){
                 case parquet::LogicalType::Type::TIMESTAMP:
                     if(column_reader->descr()->logical_type()->ToString().find("timeUnit=nanoseconds") != std::string::npos)
-                        return getCol(static_cast<parquet::Int64Reader*>(column_reader.get()), rowCount, KP, getLongCol);
+                        return getCol(static_cast<parquet::Int64Reader*>(column_reader.get()), rowCount, KP, getTimestampCol);
                 case parquet::LogicalType::Type::TIME:
                     if(column_reader->descr()->logical_type()->ToString().find("timeUnit=nanoseconds") != std::string::npos)
                         return getCol(static_cast<parquet::Int64Reader*>(column_reader.get()), rowCount, KN, getLongCol);
@@ -114,6 +114,13 @@ K PREADER::getIntCol(parquet::Int32Reader *reader, int kType, int rowCount,
     return res;
 }
 
+K PREADER::getDateCol(parquet::Int32Reader *reader, int kType, int rowCount, 
+                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
+    K res = getIntCol(reader, kType, rowCount, valid_bits, null_count, levels_read);
+    std::for_each(&kI(res)[0], &kI(res)[0] + rowCount, [](int &n){ n-=10957; });
+    return res;
+}
+
 K PREADER::getShortCol(parquet::Int32Reader *reader, int kType, int rowCount, 
                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
     K res = ktn(KH, rowCount);
@@ -146,6 +153,13 @@ K PREADER::getLongCol(parquet::Int64Reader *reader, int kType, int rowCount,
         rows_read += reader->ReadBatchSpaced(rowCount, &definition_level, &repetition_level,
                                              &kJ64(res)[rows_read], valid_bits.data()+rows_read,
                                              0, &levels_read, &values_read, &null_count);
+    return res;
+}
+
+K PREADER::getTimestampCol(parquet::Int64Reader *reader, int kType, int rowCount, 
+                        std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
+    K res = getLongCol(reader, kType, rowCount, valid_bits, null_count, levels_read);
+    std::for_each(&kJ64(res)[0], &kJ64(res)[0] + rowCount, [](int64_t &n){ n-=946684800000000000; });
     return res;
 }
 
