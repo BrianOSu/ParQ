@@ -97,10 +97,14 @@ void WRITER::writeColumn(K col, parquet::RowGroupWriter* rg_writer){
         writeByteCol(static_cast<parquet::FixedLenByteArrayWriter*>(rg_writer->NextColumn()), col);
     else if(type == KH)
         writeShortCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col);
-    else if(type == KI || type == KM || type == KD || type == KU || type == KV || type == KT)
+    else if(type == KI || type == KM || type == KU || type == KV || type == KT)
         writeCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col->n, &kI(col)[0]);
-    else if(type == KJ | type == KP || type == KN)
+    else if(type == KD){
+        writeDateCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col);}
+    else if(type == KJ || type == KN)
         writeCol(static_cast<parquet::Int64Writer*>(rg_writer->NextColumn()), col->n, &kJ64(col)[0]);
+    else if(type == KP)
+        writeTimestampCol(static_cast<parquet::Int64Writer*>(rg_writer->NextColumn()), col);
     else if(type == KE)
         writeCol(static_cast<parquet::FloatWriter*>(rg_writer->NextColumn()), col->n, &kE(col)[0]);
     else if(type == KF || type == KZ)
@@ -130,8 +134,22 @@ void WRITER::writeByteCol(parquet::FixedLenByteArrayWriter* writer, K col){
     writer->WriteBatch(col->n, nullptr, nullptr, &std::vector<parquet::FixedLenByteArray>(&kG(col), &kG(col) + col->n)[0]);
 }
 
+void WRITER::writeDateCol(parquet::Int32Writer* writer, K col){
+    //need to copy because changing the underlying value
+    std::vector<int32_t> cpy(kI(col), kI(col)+col->n);
+    std::for_each(cpy.begin(), cpy.end(), [](int32_t &n){ n+=10957; });
+    writer->WriteBatch(col->n, nullptr, nullptr, &cpy[0]);
+}
+
 void WRITER::writeShortCol(parquet::Int32Writer* writer, K col){
     writer->WriteBatch(col->n, nullptr, nullptr, &std::vector<int32_t>(&kH(col)[0], &kH(col)[0] + col->n)[0]);
+}
+
+void WRITER::writeTimestampCol(parquet::Int64Writer* writer, K col){
+    //need to copy because changing the underlying value
+    std::vector<int64_t> cpy(kJ(col), kJ(col)+col->n);
+    std::for_each(cpy.begin(), cpy.end(), [](int64_t &n){ n+=946684800000000000; });
+    writer->WriteBatch(col->n, nullptr, nullptr, &cpy[0]);
 }
 
 void WRITER::writeCol(parquet::Int96Writer* writer, K col){

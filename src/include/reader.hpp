@@ -41,11 +41,15 @@ namespace KDB{
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 static K getIntCol(parquet::Int32Reader *reader, int kType, int rowCount, 
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
+                static K getDateCol(parquet::Int32Reader *reader, int kType, int rowCount, 
+                                    std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 static K getShortCol(parquet::Int32Reader *reader, int kType, int rowCount, 
                                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 static std::vector<int32_t> extractShorts(parquet::Int32Reader *reader, int rowCount, 
                                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 static K getLongCol(parquet::Int64Reader *reader, int kType, int rowCount, 
+                                    std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
+                static K getTimestampCol(parquet::Int64Reader *reader, int kType, int rowCount, 
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 static K getInt96Col(parquet::Int96Reader *reader, int kType, int rowCount, 
                                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);

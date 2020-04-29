@@ -80,10 +80,10 @@ $ q q/ParQ.q
 Writing and reading can be done as in the following:
 ```q
 q)t:([]a:1 2 3;b:("testing";"this";"here"))
-q).pq.write[t;`t]
+q).pq.write.single[t;`t]
 1b
 q)//Read a single row group from a parquet file
-q)t1:.pq.read`t
+q)t1:.pq.read.first`t
 q)t~t1
 1b
 ```
@@ -91,64 +91,64 @@ Multiple Row groups
 ```q
 q)t:([]a:1 2 3;b:("testing";"this";"here"))
 q)//Write the first row group
-q).pq.writeMulti[t;`t]
+q).pq.write.multi[t;`t]
 1b
 //Write the second row group
-q).pq.writeMulti[t;`t]
+q).pq.write.multi[t;`t]
 1b
 q)//Close the writer to finalise the file
-q).pq.closeWriter[]
+q).pq.write.close[]
 1b
 q)//Open the file to read multiple row groups
-q).pq.load`t
+q).pq.read.load`t
 1b
-q).pq.schema[]
+q).pq.read.schema[]
 "message schema {"
 "  required int64 a (Int(bitWidth=64, isSigned=true));"
 "  required binary b (String);"
 ,"}"
 //Current rowGroup
-q).pq.rowGroup[]
+q).pq.read.rowGroup[]
 0
 //Total row groups
-q).pq.totalRowGroup[]
+q).pq.read.totalRowGroup[]
 2
 //Read the first row group
-q)t2:.pq.readMulti[]
+q)t2:.pq.read.multi[]
 q)t~t2
 1b
 //Move to the next row group
-q).pq.next[]
+q).pq.read.next[]
 1b
 //Read the current row group
-q)t2,:.pq.readMulti[]
+q)t2,:.pq.read.multi[]
 q)t2~t
 0b
 q)t2~t,t
 1b
-q).pq.next[]
+q).pq.read.next[]
 'Already at the latest row group
   [0]  .pq.next[]
        ^
 //Close file when finished reading
-q).pq.close[]
+q).pq.read.close[]
 1b
 ```
 Multi-threaded rowgroup reading using peach with slaves
 ```q
-q).pq.load[`t.parquet]
+q).pq.read.load[`t.parquet]
 1b
-q)t:raze .pq.readGroup[`t.parquet;;(::)] peach til .pq.totalRowGroup[]
-q).pq.close[]
+q)t:raze .pq.read.group[`t.parquet;;(::)] peach til .pq.read.totalRowGroup[]
+q).pq.read.close[]
 1b
 ```
 It is much quicker to read specific columns into memory if you don't need the full table.
 ```q
 //Load the table
-q).pq.load`t.parquet
+q).pq.read.load`t.parquet
 1b
 //Check the schema
-q).pq.schema[]
+q).pq.read.schema[]
 "message schema {"
 "  required boolean bool;"
 "  required fixed_len_byte_array(16) guid (UUID);"
@@ -171,7 +171,7 @@ q).pq.schema[]
 "  required int32 time (Time(isAdjustedToUTC=false, timeUnit=milliseconds));"
 "}"
 //Read only the float and int columns
-q).pq.readMulti[`float`int]
+q).pq.read.multi[`float`int]
 float    int       
 -------------------
 57.68374 973227945 
@@ -179,10 +179,10 @@ float    int
 52.43847 989873294 
 ..
 //Close the file
-q).pq.close[]
+q).pq.read.close[]
 1b
 //Read guid, bool and int column from first row group
-q).pq.readGroup[`t.parquet; 0; `guid`bool`int]
+q).pq.read.group[`t.parquet; 0; `guid`bool`int]
 guid                                 bool int       
 ----------------------------------------------------
 a0d3e6c6-9bfa-3936-8fec-94bd844b4a20 1    963573298 
@@ -190,7 +190,7 @@ a0d3e6c6-9bfa-3936-8fec-94bd844b4a20 1    963573298
 3c669a3f-7071-f3e4-142f-8bbb684d299d 0    1302452830
 ..
 //Read int,bool and time column from first row group
-q).pq.readGroup[`t.parquet; 0; `int`bool`time]
+q).pq.read.group[`t.parquet; 0; `int`bool`time]
 int        bool time        
 ----------------------------
 973227945  1    00:00:05.480
@@ -203,17 +203,17 @@ int        bool time
 ParQ allows users to write their own key-value metadata. This can used to indicate which datatype the column originated in.
 
 Available functions are:
-  * .pq.writeMeta
-  * .pq.writeMultiMeta
-  * .pq.keyValueMeta
+  * .pq.write.singleMeta
+  * .pq.write.multiMeta
+  * .pq.read.keyValueMeta
 
 ```q
 q)t:([]date:10?.z.d; price:10?100)
-q).pq.writeMeta[t; "t.parquet"; (`date`price)!(`date`long)]
+q).pq.write.singleMeta[t; "t.parquet"; (`date`price)!(`date`long)]
 1b
-q).pq.load"t.parquet"
+q).pq.read.load"t.parquet"
 1b
-q).pq.keyValueMeta[]
+q).pq.read.keyValueMeta[]
 date | date
 price| long
 ```
@@ -224,7 +224,7 @@ price| long
 
 Compression can be set using the following:
 ```q
-q).pq.codecs
+q).pq.write.codecs
 UNCOMPRESSED| 0
 SNAPPY      | 1
 GZIP        | 2
@@ -233,8 +233,8 @@ ZSTD        | 4
 LZ4         | 5
 LZO         | 6
 BZ2         | 7
-q).pq.setCodec[`ZSTD]
-q).pq.getCodec[]
+q).pq.write.setCodec[`ZSTD]
+q).pq.write.getCodec[]
 `ZSTD
 ```
 

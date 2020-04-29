@@ -46,7 +46,9 @@ namespace KDB{
                 static void writeGuidCol(parquet::FixedLenByteArrayWriter* writer, K col);
                 #endif
                 static void writeByteCol(parquet::FixedLenByteArrayWriter* writer, K col);
+                static void writeDateCol(parquet::Int32Writer* writer, K col);
                 static void writeShortCol(parquet::Int32Writer* writer, K col);
+                static void writeTimestampCol(parquet::Int64Writer* writer, K col);
                 static void writeCol(parquet::Int96Writer* writer, K col);
                 static void writeCharCol(parquet::ByteArrayWriter* writer, K col);
                 static void writeSymCol(parquet::ByteArrayWriter* writer, K col);
