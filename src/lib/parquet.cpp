@@ -72,23 +72,23 @@ K PKDB::readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader,
                                          int num_rows,
                                          K cols){
     K colNames = ktn(KS,0);
-    std::vector<K> colVec(num_cols);
+    K colValues = ktn(0,num_cols);
     std::vector<std::thread> threads;
+    int state = setm(1);
 
     for(int i=0; i<num_cols; i++){
         int index = cols->n ? getColIndex(row_group_reader, std::string(kS(cols)[i])) : i;
         if(index < 0) return krr(kS(cols)[i]);
         js(&colNames, PKDB::readColName(row_group_reader, index));
-        threads.push_back(std::thread(&PKDB::appendCol, std::ref(colVec[i]), row_group_reader, index, num_rows));
+        threads.push_back(std::thread(&PKDB::appendCol, std::ref(kK(colValues)[i]), row_group_reader, index, num_rows));
     }
 
-    K colValues = ktn(0,0);
     for(int i=0; i<num_cols; i++){
         threads[i].join();
-        jk(&colValues, r1(colVec[i])); //Increment ref count to avoid crash. Might be causing mem leak
     }
+    
+    setm(state);
 
-    //Return a table to the process
     return xT(xD(colNames, colValues));
 }
 
@@ -105,7 +105,8 @@ K PKDB::getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, in
 }
 
 void PKDB::appendCol(K &col, std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows){
-    col = PKDB::getColData(row_group_reader, index, num_rows);
+    col = r1(PKDB::getColData(row_group_reader, index, num_rows));
+    //m9(); <- m9 breaks returning all data. This causes a memory leak
 }
 
 K PKDB::close(){
