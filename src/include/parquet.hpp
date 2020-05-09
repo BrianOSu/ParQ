@@ -19,6 +19,7 @@
 
 #include <reader.hpp>
 #include <writer.hpp>
+#include <thread>
 
 namespace KDB{
     namespace PARQ{
@@ -35,9 +36,11 @@ namespace KDB{
                                     int num_cols,
                                     int num_rows,
                                     K cols);
+                        
                 static int getColIndex(std::shared_ptr<parquet::RowGroupReader> row_group_reader, std::string colName);
                 static S readColName(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index);
                 static K getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows);
+                static void appendCol(K &cols, std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows);
                 static K close();
                 static void incrementCurrentRowGroup(){instance->currentRowGroup++;};
 

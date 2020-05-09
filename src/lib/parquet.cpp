@@ -55,7 +55,6 @@ K PKDB::readGroup(std::string fileName, int group, K cols){
 						 cols->n ? cols->n : row_group_reader->metadata()->num_columns(),
 						 row_group_reader->metadata()->num_rows(),
 						 cols);
-        filerReader->Close();
     } catch (const std::exception& e) {
             char* error = const_cast<char*>(e.what());
             return orr(error);
@@ -72,16 +71,21 @@ K PKDB::readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader,
                                          int num_cols,
                                          int num_rows,
                                          K cols){
-    //This will hold the column names
-    K colNames = ktn(KS,num_cols);
-    //This will hold column values
-    K colValues = ktn(0,0);
+    K colNames = ktn(KS,0);
+    std::vector<K> colVec(num_cols);
+    std::vector<std::thread> threads;
 
     for(int i=0; i<num_cols; i++){
-        int index = cols->n ? getColIndex(row_group_reader, std::string{kS(cols)[i]}) : i;
-		if(index < 0) return krr(kS(cols)[i]);
-        kS(colNames)[i] = PKDB::readColName(row_group_reader, index);
-        jk(&colValues, PKDB::getColData(row_group_reader, index, num_rows));
+        int index = cols->n ? getColIndex(row_group_reader, std::string(kS(cols)[i])) : i;
+        if(index < 0) return krr(kS(cols)[i]);
+        js(&colNames, PKDB::readColName(row_group_reader, index));
+        threads.push_back(std::thread(&PKDB::appendCol, std::ref(colVec[i]), row_group_reader, index, num_rows));
+    }
+
+    K colValues = ktn(0,0);
+    for(int i=0; i<num_cols; i++){
+        threads[i].join();
+        jk(&colValues, r1(colVec[i])); //Increment ref count to avoid crash. Might be causing mem leak
     }
 
     //Return a table to the process
@@ -98,6 +102,10 @@ S PKDB::readColName(std::shared_ptr<parquet::RowGroupReader> row_group_reader, i
 
 K PKDB::getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows){
 	return PREADER::readColumns(row_group_reader->Column(index), num_rows);
+}
+
+void PKDB::appendCol(K &col, std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows){
+    col = PKDB::getColData(row_group_reader, index, num_rows);
 }
 
 K PKDB::close(){
