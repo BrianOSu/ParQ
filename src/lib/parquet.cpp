@@ -80,7 +80,8 @@ K PKDB::readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader,
         int index = cols->n ? getColIndex(row_group_reader, std::string(kS(cols)[i])) : i;
         if(index < 0) return krr(kS(cols)[i]);
         js(&colNames, PKDB::readColName(row_group_reader, index));
-        threads.push_back(std::thread(&PKDB::appendCol, std::ref(kK(colValues)[i]), row_group_reader, index, num_rows));
+        kK(colValues)[i] = PREADER::p2kType(row_group_reader->Column(index), num_rows);
+        threads.push_back(std::thread(&PKDB::getColData, std::ref(kK(colValues)[i]), row_group_reader->Column(index), num_rows));
     }
 
     for(int i=0; i<num_cols; i++){
@@ -88,7 +89,7 @@ K PKDB::readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader,
     }
     
     setm(state);
-
+    //return colNames;
     return xT(xD(colNames, colValues));
 }
 
@@ -100,13 +101,10 @@ S PKDB::readColName(std::shared_ptr<parquet::RowGroupReader> row_group_reader, i
     return ss(const_cast<char*>(row_group_reader->metadata()->schema()->Column(index)->name().c_str()));
 }
 
-K PKDB::getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows){
-	return PREADER::readColumns(row_group_reader->Column(index), num_rows);
-}
-
-void PKDB::appendCol(K &col, std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows){
-    col = r1(PKDB::getColData(row_group_reader, index, num_rows));
-    //m9(); <- m9 breaks returning all data. This causes a memory leak
+void PKDB::getColData(K &col, std::shared_ptr<parquet::ColumnReader> column_reader, int num_rows){
+    PREADER::readColumns(col, column_reader, num_rows);
+    //std::copy(kS(test), kS(test)+test->n, kS(col));
+    m9();
 }
 
 K PKDB::close(){

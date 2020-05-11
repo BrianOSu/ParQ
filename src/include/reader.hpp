@@ -31,42 +31,43 @@ namespace KDB{
                 ~PREADER();
 
                 static std::shared_ptr<parquet::ParquetFileReader> open_reader(const std::string& path);
-                static K readColumns(std::shared_ptr<parquet::ColumnReader> column_reader,
+                static void readColumns(K col, std::shared_ptr<parquet::ColumnReader> column_reader,
                                    int rowCount);
+                static K p2kType(std::shared_ptr<parquet::ColumnReader> column_reader, int len);
 
                 template<typename T, typename F> 
-                static K getCol(T *reader, int rowCount, int kType, F func);
+                static void getCol(K col, T *reader, int rowCount, F func);
 
-                static K getBoolCol(parquet::BoolReader *reader, int kType, int rowCount, 
+                static void getBoolCol(K col, parquet::BoolReader *reader, int rowCount, 
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getIntCol(parquet::Int32Reader *reader, int kType, int rowCount, 
+                static void getIntCol(K col, parquet::Int32Reader *reader, int rowCount, 
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getDateCol(parquet::Int32Reader *reader, int kType, int rowCount, 
+                static void getDateCol(K col, parquet::Int32Reader *reader, int rowCount, 
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getShortCol(parquet::Int32Reader *reader, int kType, int rowCount, 
+                static void getShortCol(K col, parquet::Int32Reader *reader, int rowCount, 
                                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 static std::vector<int32_t> extractShorts(parquet::Int32Reader *reader, int rowCount, 
                                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getLongCol(parquet::Int64Reader *reader, int kType, int rowCount, 
+                static void getLongCol(K col, parquet::Int64Reader *reader, int rowCount, 
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getTimestampCol(parquet::Int64Reader *reader, int kType, int rowCount, 
+                static void getTimestampCol(K col, parquet::Int64Reader *reader, int rowCount, 
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getInt96Col(parquet::Int96Reader *reader, int kType, int rowCount, 
+                static void getInt96Col(K col, parquet::Int96Reader *reader, int rowCount, 
                                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getFloatCol(parquet::FloatReader *reader, int kType, int rowCount, 
+                static void getFloatCol(K col, parquet::FloatReader *reader, int rowCount, 
                                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getDoubleCol(parquet::DoubleReader *reader, int kType, int rowCount, 
+                static void getDoubleCol(K col, parquet::DoubleReader *reader, int rowCount, 
                                       std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getByteCol(parquet::ByteArrayReader *reader, int kType, int rowCount, 
+                static void getByteCol(K col, parquet::ByteArrayReader *reader, int rowCount, 
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCount, 
+                static void getStringCol(K col, parquet::ByteArrayReader *reader, int rowCount, 
                                       std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getSymCol(parquet::ByteArrayReader *reader, int kType, int rowCount, 
+                static void getSymCol(K col, parquet::ByteArrayReader *reader, int rowCount, 
                                       std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static K getFLBACol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount, 
+                static void getFLBACol(K col, parquet::FixedLenByteArrayReader *reader, int rowCount, 
                                       std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 #if KXVER>=3
-                static K getUUIDCol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount, 
+                static void getUUIDCol(K col, parquet::FixedLenByteArrayReader *reader, int rowCount, 
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 #endif
             private:

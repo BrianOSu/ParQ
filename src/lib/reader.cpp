@@ -22,110 +22,102 @@ std::shared_ptr<parquet::ParquetFileReader> PREADER::open_reader(const std::stri
     return parquet::ParquetFileReader::OpenFile(path, false);
 }
 
-K PREADER::readColumns(std::shared_ptr<parquet::ColumnReader> column_reader,
+void PREADER::readColumns(K col, std::shared_ptr<parquet::ColumnReader> column_reader,
                         int rowCount ){
     switch(column_reader->type()){
         case Type::BOOLEAN:
-            return getCol(static_cast<parquet::BoolReader*>(column_reader.get()), rowCount, KB, getBoolCol);
+            getCol(col, static_cast<parquet::BoolReader*>(column_reader.get()), rowCount, getBoolCol); break;
         case Type::INT32:
             switch(column_reader->descr()->logical_type()->type()){
                 case parquet::LogicalType::Type::DATE:
-                    return getCol(static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, KD, getDateCol);
+                    getCol(col, static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, getDateCol); break;
                 case parquet::LogicalType::Type::TIME:
-                    return getCol(static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, KT, getIntCol);
+                    getCol(col, static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, getIntCol); break;
                 case parquet::LogicalType::Type::INT:
-                    if(column_reader->descr()->logical_type()->is_compatible(parquet::ConvertedType::INT_16))
-                        return getCol(static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, KH, getShortCol);
+                    if(column_reader->descr()->logical_type()->is_compatible(parquet::ConvertedType::INT_16)){
+                        getCol(col, static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, getShortCol); break;}
                 default:
-                    return getCol(static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, KI, getIntCol);
-            }
+                    getCol(col, static_cast<parquet::Int32Reader*>(column_reader.get()), rowCount, getIntCol); break;
+            } break;
         case Type::INT64:
             switch(column_reader->descr()->logical_type()->type()){
                 case parquet::LogicalType::Type::TIMESTAMP:
-                    if(column_reader->descr()->logical_type()->ToString().find("timeUnit=nanoseconds") != std::string::npos)
-                        return getCol(static_cast<parquet::Int64Reader*>(column_reader.get()), rowCount, KP, getTimestampCol);
+                    if(column_reader->descr()->logical_type()->ToString().find("timeUnit=nanoseconds") != std::string::npos){
+                        getCol(col, static_cast<parquet::Int64Reader*>(column_reader.get()), rowCount, getTimestampCol); break;}
                 case parquet::LogicalType::Type::TIME:
-                    if(column_reader->descr()->logical_type()->ToString().find("timeUnit=nanoseconds") != std::string::npos)
-                        return getCol(static_cast<parquet::Int64Reader*>(column_reader.get()), rowCount, KN, getLongCol);
+                    if(column_reader->descr()->logical_type()->ToString().find("timeUnit=nanoseconds") != std::string::npos){
+                        getCol(col, static_cast<parquet::Int64Reader*>(column_reader.get()), rowCount, getLongCol); break;}
                 default:
-                    return getCol(static_cast<parquet::Int64Reader*>(column_reader.get()), rowCount, KJ, getLongCol);
-            }
+                    getCol(col, static_cast<parquet::Int64Reader*>(column_reader.get()), rowCount, getLongCol); break;
+            } break;
         case Type::INT96:
-            return getCol(static_cast<parquet::Int96Reader*>(column_reader.get()), rowCount, KP, getInt96Col);
+            getCol(col, static_cast<parquet::Int96Reader*>(column_reader.get()), rowCount, getInt96Col); break;
         case Type::FLOAT:
-            return getCol(static_cast<parquet::FloatReader*>(column_reader.get()), rowCount, KE, getFloatCol);
+            getCol(col, static_cast<parquet::FloatReader*>(column_reader.get()), rowCount, getFloatCol); break;
         case Type::DOUBLE:
-            return getCol(static_cast<parquet::DoubleReader*>(column_reader.get()), rowCount, KF, getDoubleCol);
+            getCol(col, static_cast<parquet::DoubleReader*>(column_reader.get()), rowCount, getDoubleCol); break;
         case Type::BYTE_ARRAY:
             switch(column_reader->descr()->logical_type()->type()){
                 case parquet::LogicalType::Type::STRING:
-                    return getCol(static_cast<parquet::ByteArrayReader*>(column_reader.get()), rowCount, 0, getStringCol);
+                    getCol(col, static_cast<parquet::ByteArrayReader*>(column_reader.get()), rowCount, getStringCol); break;
                 case parquet::LogicalType::Type::ENUM:
-                    return getCol(static_cast<parquet::ByteArrayReader*>(column_reader.get()), rowCount, 0, getSymCol);
+                    getCol(col, static_cast<parquet::ByteArrayReader*>(column_reader.get()), rowCount, getSymCol); break;
                 default:
-                    return getCol(static_cast<parquet::ByteArrayReader*>(column_reader.get()), rowCount, 0, getByteCol);
-            }
+                    getCol(col, static_cast<parquet::ByteArrayReader*>(column_reader.get()), rowCount, getByteCol); break;
+            } break;
         case Type::FIXED_LEN_BYTE_ARRAY:
             switch(column_reader->descr()->logical_type()->type()){
                 #if KXVER>=3
                 case parquet::LogicalType::Type::UUID:
-                    return getCol(static_cast<parquet::FixedLenByteArrayReader*>(column_reader.get()), rowCount, UU, getUUIDCol);
+                    getCol(col, static_cast<parquet::FixedLenByteArrayReader*>(column_reader.get()), rowCount, getUUIDCol); break;
                 #endif
                 default:
-                    return getCol(static_cast<parquet::FixedLenByteArrayReader*>(column_reader.get()), rowCount, 0, getFLBACol);
+                    getCol(col, static_cast<parquet::FixedLenByteArrayReader*>(column_reader.get()), rowCount, getFLBACol); break;
             }
-        default:return nullptr;
     }
 }
 
 template<typename T, typename F>
-K PREADER::getCol(T *reader, int rowCount, int kType, F func){
+void PREADER::getCol(K col, T *reader, int rowCount, F func){
     std::vector<uint8_t> valid_bits(rowCount+1, 255);
     int64_t null_count = -1;
     int64_t levels_read = 0;
-    return func(reader, kType, rowCount, valid_bits, null_count, levels_read);
+    func(col, reader, rowCount, valid_bits, null_count, levels_read);
 }
 
-K PREADER::getBoolCol(parquet::BoolReader *reader, int kType, int rowCount, 
+void PREADER::getBoolCol(K col, parquet::BoolReader *reader, int rowCount, 
                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = ktn(kType, rowCount);
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
     while(reader->HasNext())
         rows_read += reader->ReadBatchSpaced(rowCount, &definition_level, &repetition_level,
-                                             &kB(res)[rows_read], valid_bits.data()+rows_read,
+                                             &kB(col)[rows_read], valid_bits.data()+rows_read,
                                              0, &levels_read, &values_read, &null_count);
-    return res;
 }
 
-K PREADER::getIntCol(parquet::Int32Reader *reader, int kType, int rowCount, 
+void PREADER::getIntCol(K col, parquet::Int32Reader *reader, int rowCount, 
                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = ktn(kType, rowCount);
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
     while(reader->HasNext())
         rows_read += reader->ReadBatchSpaced(rowCount, &definition_level, &repetition_level, 
-                                             &kI(res)[rows_read], valid_bits.data()+rows_read, 
+                                             &kI(col)[rows_read], valid_bits.data()+rows_read, 
                                              0, &levels_read, &values_read, &null_count);
-    return res;
 }
 
-K PREADER::getDateCol(parquet::Int32Reader *reader, int kType, int rowCount, 
+void PREADER::getDateCol(K col, parquet::Int32Reader *reader, int rowCount, 
                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = getIntCol(reader, kType, rowCount, valid_bits, null_count, levels_read);
-    std::for_each(&kI(res)[0], &kI(res)[0] + rowCount, [](int &n){ n-=10957; });
-    return res;
+    getIntCol(col, reader, rowCount, valid_bits, null_count, levels_read);
+    std::for_each(&kI(col)[0], &kI(col)[0] + rowCount, [](int &n){ n-=10957; });
 }
 
-K PREADER::getShortCol(parquet::Int32Reader *reader, int kType, int rowCount, 
+void PREADER::getShortCol(K col, parquet::Int32Reader *reader, int rowCount, 
                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = ktn(KH, rowCount);
-    std::copy_n(extractShorts(reader, rowCount, valid_bits, null_count, levels_read).begin(), rowCount, &kH(res)[0]);
-    return res;
+    std::copy_n(extractShorts(reader, rowCount, valid_bits, null_count, levels_read).begin(), rowCount, &kH(col)[0]);
 }
 
 std::vector<int32_t> PREADER::extractShorts(parquet::Int32Reader *reader, int rowCount, 
@@ -142,74 +134,65 @@ std::vector<int32_t> PREADER::extractShorts(parquet::Int32Reader *reader, int ro
     return value;
 }
 
-K PREADER::getLongCol(parquet::Int64Reader *reader, int kType, int rowCount, 
+void PREADER::getLongCol(K col, parquet::Int64Reader *reader, int rowCount, 
                         std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = ktn(kType, rowCount);
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
     while(reader->HasNext())
         rows_read += reader->ReadBatchSpaced(rowCount, &definition_level, &repetition_level,
-                                             &kJ64(res)[rows_read], valid_bits.data()+rows_read,
+                                             &kJ64(col)[rows_read], valid_bits.data()+rows_read,
                                              0, &levels_read, &values_read, &null_count);
-    return res;
 }
 
-K PREADER::getTimestampCol(parquet::Int64Reader *reader, int kType, int rowCount, 
+void PREADER::getTimestampCol(K col, parquet::Int64Reader *reader, int rowCount, 
                         std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = getLongCol(reader, kType, rowCount, valid_bits, null_count, levels_read);
-    std::for_each(&kJ64(res)[0], &kJ64(res)[0] + rowCount, [](int64_t &n){ n-=946684800000000000; });
-    return res;
+    getLongCol(col, reader, rowCount, valid_bits, null_count, levels_read);
+    std::for_each(&kJ64(col)[0], &kJ64(col)[0] + rowCount, [](int64_t &n){ n-=946684800000000000; });
 }
 
-K PREADER::getInt96Col(parquet::Int96Reader *reader, int kType, int rowCount, 
+void PREADER::getInt96Col(K col, parquet::Int96Reader *reader, int rowCount, 
                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
     //magic number convert julian date to unix epoch
     int64_t unixTime=946684800000000000;
-    K res = ktn(kType, rowCount);
     parquet::Int96 value;
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     for(int i=0;i<rowCount;i++){
         reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &value, valid_bits.data(), 0, &levels_read, &values_read, &null_count);
-        kJ(res)[i]=parquet::Int96GetNanoSeconds(value)-unixTime;
+        kJ(col)[i]=parquet::Int96GetNanoSeconds(value)-unixTime;
     }
-    return res;
 }
 
-K PREADER::getFloatCol(parquet::FloatReader *reader, int kType, int rowCount, 
+void PREADER::getFloatCol(K col, parquet::FloatReader *reader, int rowCount, 
                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = ktn(kType, rowCount);
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
     while(reader->HasNext())
         rows_read += reader->ReadBatchSpaced(rowCount, &definition_level, &repetition_level, 
-                                             &kE(res)[rows_read], valid_bits.data()+rows_read, 
+                                             &kE(col)[rows_read], valid_bits.data()+rows_read, 
                                              0, &levels_read, &values_read, &null_count);
-    return res;
 }
 
-K PREADER::getDoubleCol(parquet::DoubleReader *reader, int kType, int rowCount, 
+void PREADER::getDoubleCol(K col, parquet::DoubleReader *reader, int rowCount, 
                         std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = ktn(kType,rowCount);
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
     while(reader->HasNext())
         rows_read += reader->ReadBatchSpaced(rowCount, &definition_level, &repetition_level, 
-                                             &kF(res)[rows_read], valid_bits.data()+rows_read, 
+                                             &kF(col)[rows_read], valid_bits.data()+rows_read, 
                                              0, &levels_read, &values_read, &null_count);
-    return res;
 }
 
-K PREADER::getByteCol(parquet::ByteArrayReader *reader, int kType, int rowCount, 
+void PREADER::getByteCol(K col, parquet::ByteArrayReader *reader, int rowCount, 
                       std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = ktn(kType, 0);
+    K res = ktn(0, 0);
     parquet::ByteArray value;
     int16_t definition_level;
     int16_t repetition_level;
@@ -221,10 +204,9 @@ K PREADER::getByteCol(parquet::ByteArrayReader *reader, int kType, int rowCount,
         std::copy(&value.ptr[0], &value.ptr[0]+value.len, kG(bytes));
         jk(&res,bytes);
     }
-    return res;
 }
 
-K PREADER::getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCount, 
+void PREADER::getStringCol(K col, parquet::ByteArrayReader *reader, int rowCount, 
                         std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
     K res = ktn(0,0);
     parquet::ByteArray value;
@@ -236,12 +218,10 @@ K PREADER::getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCoun
                                 valid_bits.data(), 0, &levels_read, &values_read, &null_count);
         jk(&res,kpn((char*)&value.ptr[0], value.len));
     }
-    return res;
 }
 
-K PREADER::getSymCol(parquet::ByteArrayReader *reader, int kType, int rowCount, 
+void PREADER::getSymCol(K col, parquet::ByteArrayReader *reader,  int rowCount, 
                         std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = ktn(KS,rowCount);
     parquet::ByteArray value;
     int16_t definition_level;
     int16_t repetition_level;
@@ -249,12 +229,11 @@ K PREADER::getSymCol(parquet::ByteArrayReader *reader, int kType, int rowCount,
     for(int i=0;i<rowCount;i++){
         reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &value, 
                                 valid_bits.data(), 0, &levels_read, &values_read, &null_count);
-        kS(res)[i]=sn((char*)&value.ptr[0], value.len);
+        kS(col)[i]=sn((char*)&value.ptr[0], value.len);
     }
-    return res;
 }
 
-K PREADER::getFLBACol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount, 
+void PREADER::getFLBACol(K col, parquet::FixedLenByteArrayReader *reader, int rowCount, 
                   std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
     int size = reader->descr()->type_length();
     K res = size == 1 ? ktn(KG,rowCount) : ktn(0,0);
@@ -277,13 +256,11 @@ K PREADER::getFLBACol(parquet::FixedLenByteArrayReader *reader, int kType, int r
             jk(&res,bytes); 
         }           
     }
-    return res;
 }
 
 #if KXVER>=3
-K PREADER::getUUIDCol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount, 
+void PREADER::getUUIDCol(K col, parquet::FixedLenByteArrayReader *reader, int rowCount, 
                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read){
-    K res = ktn(kType,rowCount);
     parquet::FLBA value;
     int16_t definition_level;
     int16_t repetition_level;
@@ -291,8 +268,62 @@ K PREADER::getUUIDCol(parquet::FixedLenByteArrayReader *reader, int kType, int r
     for(int i=0;i<rowCount;i++){
         reader->ReadBatchSpaced(1, &definition_level, &repetition_level, &value, 
                                 valid_bits.data(), 0, &levels_read, &values_read, &null_count);
-        std::copy(&value.ptr[0], &value.ptr[0]+16, kU(res)[i].g);
+        std::copy(&value.ptr[0], &value.ptr[0]+16, kU(col)[i].g);
     }
-    return res;
 }
 #endif
+
+K PREADER::p2kType(std::shared_ptr<parquet::ColumnReader> column_reader, int len){
+    switch(column_reader->type()){
+        case Type::BOOLEAN:
+            return ktn(KB, len);
+        case Type::INT32:
+            switch(column_reader->descr()->logical_type()->type()){
+                case parquet::LogicalType::Type::DATE:
+                    return ktn(KD, len);
+                case parquet::LogicalType::Type::TIME:
+                    return ktn(KT, len);
+                case parquet::LogicalType::Type::INT:
+                    if(column_reader->descr()->logical_type()->is_compatible(parquet::ConvertedType::INT_16))
+                        return ktn(KH, len);
+                default:
+                    return ktn(KI, len);
+            }
+        case Type::INT64:
+            switch(column_reader->descr()->logical_type()->type()){
+                case parquet::LogicalType::Type::TIMESTAMP:
+                    if(column_reader->descr()->logical_type()->ToString().find("timeUnit=nanoseconds") != std::string::npos)
+                        return ktn(KP, len);
+                case parquet::LogicalType::Type::TIME:
+                    if(column_reader->descr()->logical_type()->ToString().find("timeUnit=nanoseconds") != std::string::npos)
+                        return ktn(KN, len);
+                default:
+                    return ktn(KJ, len);
+            }
+        case Type::INT96:
+            return ktn(KP, len);
+        case Type::FLOAT:
+            return ktn(KE, len);
+        case Type::DOUBLE:
+            return ktn(KF, len);
+        case Type::BYTE_ARRAY:
+            switch(column_reader->descr()->logical_type()->type()){
+                case parquet::LogicalType::Type::STRING:
+                    return ktn(0, len);
+                case parquet::LogicalType::Type::ENUM:
+                    return ktn(KS, len);
+                default:
+                    return ktn(0, len);
+            }
+        case Type::FIXED_LEN_BYTE_ARRAY:
+            switch(column_reader->descr()->logical_type()->type()){
+                #if KXVER>=3
+                case parquet::LogicalType::Type::UUID:
+                    return ktn(UU, len);
+                #endif
+                default:
+                    return ktn(0, len);
+            }
+        default:return ktn(0, len);
+    }
+}
