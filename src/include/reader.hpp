@@ -31,10 +31,10 @@ namespace KDB{
                 ~PREADER();
 
                 static std::shared_ptr<parquet::ParquetFileReader> open_reader(const std::string& path);
+                static K p2kType(std::shared_ptr<parquet::ColumnReader> column_reader, int len);
                 static void readColumns(K col, std::shared_ptr<parquet::ColumnReader> column_reader,
                                    int rowCount);
-                static K p2kType(std::shared_ptr<parquet::ColumnReader> column_reader, int len);
-
+                                   
                 template<typename T, typename F> 
                 static void getCol(K col, T *reader, int rowCount, F func);
 
@@ -60,8 +60,6 @@ namespace KDB{
                                       std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 static void getByteCol(K col, parquet::ByteArrayReader *reader, int rowCount, 
                                     std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
-                static void getStringCol(K col, parquet::ByteArrayReader *reader, int rowCount, 
-                                      std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 static void getSymCol(K col, parquet::ByteArrayReader *reader, int rowCount, 
                                       std::vector<uint8_t> valid_bits, int64_t null_count, int64_t levels_read);
                 static void getFLBACol(K col, parquet::FixedLenByteArrayReader *reader, int rowCount, 

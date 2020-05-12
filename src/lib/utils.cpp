@@ -45,3 +45,13 @@ std::vector<std::string> k2StrVec(K x){
 K string2k(std::string x){
     return kp(const_cast<char*>(x.c_str()));
 }
+
+// Pre-allocates a nested K list on the main q thread
+// This allows it to be filled by a seperate thread
+K kAlloc(int type, size_t len, size_t n){
+    K x = ktn(0, len);
+    for(int i = 0; i<len; i++){
+        kK(x)[i] = ktn(type, n);
+    }
+    return x;
+}

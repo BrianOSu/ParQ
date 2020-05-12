@@ -34,6 +34,7 @@ extern"C"{
     std::string k2string(K x);
     std::vector<std::string> k2StrVec(K x);
     K string2k(std::string x);
+    K kAlloc(int type, size_t n, size_t len);
 }
 
 inline const B* kB(const k0* x){ return reinterpret_cast<const B*>(x->G0); }
