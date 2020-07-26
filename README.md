@@ -1,5 +1,7 @@
 # ParQ
 
+![alt text](https://github.com/BrianOSu/ParQ/blob/master/parq_logo.jpg?raw=true)
+
 KDB library to read and write parquet files.
 
 Author: Brian O'Sullivan
