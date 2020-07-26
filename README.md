@@ -15,7 +15,7 @@ LinkedIn: https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
 - kdb+
 - Apache Arrow
   * https://github.com/apache/arrow
-  * Built for ver 0.17.0
+  * Built for ver 1.0.0
   * Older versions codec dictionary will be incorrect
 
 Currently only supports linux
