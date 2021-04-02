@@ -100,7 +100,7 @@ extern double log(double);
 //#define R return
 #define Z static
 //#define P(x,y) {if(x)R(y);}
-#define U(x) P(!(x),0)
+//#define U(x) P(!(x),0)
 #define SW switch
 #define CS(n,x)	case n:x;break;
 #define CD default

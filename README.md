@@ -17,7 +17,7 @@ LinkedIn: https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
 - kdb+
 - Apache Arrow
   * https://github.com/apache/arrow
-  * Built for ver 1.0.0
+  * Built for ver 3.0.0
   * Older versions codec dictionary will be incorrect
 
 Currently only supports linux
@@ -222,7 +222,7 @@ price| long
 
 ### Compression
 
-[All parquet compression codecs are supported. ](https://github.com/apache/parquet-format/blob/master/src/main/thrift/parquet.thrift#L32)
+[All parquet compression codecs are supported. ](https://github.com/apache/arrow/blob/master/cpp/src/arrow/util/type_fwd.h#L42)
 
 Compression can be set using the following:
 ```q
@@ -233,14 +233,16 @@ GZIP        | 2
 BROTLI      | 3
 ZSTD        | 4
 LZ4         | 5
-LZO         | 6
-BZ2         | 7
+LZ4_FRAME   | 6
+LZO         | 7
+BZ2         | 8
+LZ4_HADOOP  | 9
 q).pq.write.setCodec[`ZSTD]
 q).pq.write.getCodec[]
 `ZSTD
 ```
 
-By default, compression is set to ZSTD. From testing, its results have been extremely promissing.
+By default, compression is set to UNCOMPRESSED.
 
 ## Issues
 

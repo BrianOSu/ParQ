@@ -28,9 +28,9 @@
 
 ///
 // Define the available codecs
-// https://github.com/apache/arrow/blob/master/cpp/src/arrow/util/compression.h#L33
+// https://github.com/apache/arrow/blob/master/cpp/src/arrow/util/type_fwd.h#L42
 // Parquet doesn't neccessarily support all of these
-.pq.write.codecs:(`UNCOMPRESSED`SNAPPY`GZIP`BROTLI`ZSTD`LZ4`LZ4_FRAME`LZO`BZ2)!til 9
+.pq.write.codecs:(`UNCOMPRESSED`SNAPPY`GZIP`BROTLI`ZSTD`LZ4`LZ4_FRAME`LZO`BZ2`LZ4_HADOOP)!til 10
 
 ///
 // Sets the compression codec for writing files
@@ -45,7 +45,7 @@
 
 ///
 // Set defaults codec to ZSTD
-.pq.write.setCodec[`ZSTD]
+.pq.write.setCodec[`UNCOMPRESSED]
 
 ///
 // Returns the compression the codec is set to
