@@ -19,6 +19,7 @@
 
 #include <utils.hpp>
 #include <arrow/io/file.h>
+#include <arrow/util/key_value_metadata.h>
 #include <parquet/api/writer.h>
 
 using parquet::LogicalType;
