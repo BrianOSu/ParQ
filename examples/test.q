@@ -38,10 +38,10 @@ t:([]
 
 //Write the above file to parquet as 2 row groups
 \ts .pq.write.multi[n1#t;`t.parquet]
-//622 55051072   <-1mm
+//635 55051072   <-1mm
 //4556 880804672 <-10mm
 \ts .pq.write.multi[neg[n1]#t; `t.parquet]
-//639 55051136
+//610 55051136
 //4762 880804736
 
 //Close the writer to avoid corrupt footer
@@ -56,25 +56,25 @@ t:([]
 
 //Read the first row group of the parquet file
 \ts t1:.pq.read.multi[]
-//359 90721072
-//3973 1259524912
+//307 90721072
+//3020 1259524912
 
 //Open and read the first row group of the file only
 \ts t2:.pq.read.first`t.parquet
-//343 90721184
-//3808 1259525024
+//300 90721184
+//3365 1259525024
 t1~t2
 
 //Read specific columns from second row group
 \ts t3:.pq.read.group[`t.parquet; 1; `int`bool]
-//4 2622032
-//60 41943632
+//3 2622032
+//19 41943632
 t3~neg[n1]#select int,bool from t
 
 .pq.read.next[]
 \ts t1,:.pq.read.multi[]
-//399 151538448
-//4131 2232603408
+//375 151538448
+//3489 2232603408
 //Close the file when done reading
 .pq.read.close[]
 
@@ -85,13 +85,13 @@ t3~neg[n1]#select int,bool from t
 
 //Write down a table with a single row group only
 \ts .pq.write.single[t;`t1.parquet]
-//1028 928
+//1006 928
 //9604 928
 
 //Open and read the row group
 \ts t2:.pq.read.first`t1.parquet
-//661 181441440
-//6697 2519049120
+//590 181441440
+//5881 2519049120
 t1~t2
 
 
