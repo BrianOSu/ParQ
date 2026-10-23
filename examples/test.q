@@ -3,7 +3,7 @@
 //------------------------------------------------------
 
 //Set total table length
-n:1000000
+n:10000000
 //Set how many rows will go into each rowgroup
 n1:"i"$n%2
 

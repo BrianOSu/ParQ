@@ -15,12 +15,12 @@ LinkedIn: https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
 ### Prerequisites
 
 - kdb+
+- C++20
 - Apache Arrow
   * https://github.com/apache/arrow
-  * Built for ver 6.0.0
-  * Older versions codec dictionary will be incorrect
+  * Built for ver 26.0.0
 
-Currently only supports linux
+Currently only supports Linux
 
 ### Type Mapping
 

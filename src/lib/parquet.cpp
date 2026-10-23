@@ -47,18 +47,24 @@ K PKDB::loadReader(std::string fileName){
     }
 }
 
-K PKDB::readGroup(std::string fileName, int group, K cols){
+K PKDB::readGroup(std::string fileName, int group, K cols) {
     try {
         std::shared_ptr<parquet::ParquetFileReader> filerReader = PREADER::open_reader(fileName.c_str());
         std::shared_ptr<parquet::RowGroupReader> row_group_reader = filerReader->RowGroup(group);
-        return readTable(row_group_reader,
-						 cols->n ? cols->n : row_group_reader->metadata()->num_columns(),
-						 row_group_reader->metadata()->num_rows(),
-						 cols);
+
+        K result = readTable(
+            row_group_reader,
+            cols->n ? cols->n : row_group_reader->metadata()->num_columns(),
+            row_group_reader->metadata()->num_rows(),
+            cols
+        );
+
         filerReader->Close();
+        return result;
+
     } catch (const std::exception& e) {
-            char* error = const_cast<char*>(e.what());
-            return orr(error);
+        char* error = const_cast<char*>(e.what());
+        return orr(error);
     }
 }
 
