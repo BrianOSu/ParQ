@@ -15,6 +15,7 @@
 */
 
 #include <reader.hpp>
+#include <stdexcept>
 
 using namespace KDB::PARQ;
 
@@ -84,39 +85,55 @@ K PREADER::getCol(T *reader, int rowCount, int kType, F func){
 }
 
 K PREADER::getBoolCol(parquet::BoolReader *reader, int kType, int rowCount){
-    K res = ktn(kType, rowCount);
+    KOwner res{ktn(kType, rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q boolean column");
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
-    while(reader->HasNext())
-        rows_read += reader->ReadBatch(rowCount, &definition_level, &repetition_level,
-                                             &kB(res)[rows_read], &values_read);
-    return res;
+    while(reader->HasNext() && rows_read < rowCount) {
+        const auto batch_rows = reader->ReadBatch(rowCount - rows_read, &definition_level,
+            &repetition_level, kB(res.get()) + rows_read, &values_read);
+        if (batch_rows <= 0 || values_read != batch_rows)
+            throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        rows_read += static_cast<int>(batch_rows);
+    }
+    if (rows_read != rowCount) throw std::runtime_error("Parquet column has an unexpected row count");
+    return res.release();
 }
 
 K PREADER::getIntCol(parquet::Int32Reader *reader, int kType, int rowCount){
-    K res = ktn(kType, rowCount);
+    KOwner res{ktn(kType, rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q integer column");
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
-    while(reader->HasNext())
-        rows_read += reader->ReadBatch(rowCount, &definition_level, &repetition_level, 
-                                             &kI(res)[rows_read], &values_read);
-    return res;
+    while(reader->HasNext() && rows_read < rowCount) {
+        const auto batch_rows = reader->ReadBatch(rowCount - rows_read, &definition_level,
+            &repetition_level, kI(res.get()) + rows_read, &values_read);
+        if (batch_rows <= 0 || values_read != batch_rows)
+            throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        rows_read += static_cast<int>(batch_rows);
+    }
+    if (rows_read != rowCount) throw std::runtime_error("Parquet column has an unexpected row count");
+    return res.release();
 }
 
 K PREADER::getDateCol(parquet::Int32Reader *reader, int kType, int rowCount){
-    K res = getIntCol(reader, kType, rowCount);
-    std::for_each(&kI(res)[0], &kI(res)[0] + rowCount, [](int &n){ n-=10957; });
-    return res;
+    KOwner res{getIntCol(reader, kType, rowCount)};
+    if (rowCount > 0) {
+        std::for_each(kI(res.get()), kI(res.get()) + rowCount, [](int &n){ n-=10957; });
+    }
+    return res.release();
 }
 
 K PREADER::getShortCol(parquet::Int32Reader *reader, int kType, int rowCount){
-    K res = ktn(KH, rowCount);
-    std::copy_n(extractShorts(reader, rowCount).begin(), rowCount, &kH(res)[0]);
-    return res;
+    KOwner res{ktn(KH, rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q short column");
+    const auto values = extractShorts(reader, rowCount);
+    std::copy_n(values.begin(), rowCount, kH(res.get()));
+    return res.release();
 }
 
 std::vector<int32_t> PREADER::extractShorts(parquet::Int32Reader *reader, int rowCount){
@@ -125,113 +142,157 @@ std::vector<int32_t> PREADER::extractShorts(parquet::Int32Reader *reader, int ro
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
-    while(reader->HasNext())
-        rows_read += reader->ReadBatch(rowCount, &definition_level, &repetition_level, 
-                                             &value[0] + rows_read, &values_read);
+    while(reader->HasNext() && rows_read < rowCount) {
+        const auto batch_rows = reader->ReadBatch(rowCount - rows_read, &definition_level,
+            &repetition_level, value.data() + rows_read, &values_read);
+        if (batch_rows <= 0 || values_read != batch_rows)
+            throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        rows_read += static_cast<int>(batch_rows);
+    }
+    if (rows_read != rowCount) throw std::runtime_error("Parquet column has an unexpected row count");
     return value;
 }
 
 K PREADER::getLongCol(parquet::Int64Reader *reader, int kType, int rowCount){
-    K res = ktn(kType, rowCount);
+    KOwner res{ktn(kType, rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q long column");
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
-    while(reader->HasNext())
-        rows_read += reader->ReadBatch(rowCount, &definition_level, &repetition_level,
-                                             &kJ64(res)[rows_read], &values_read);
-    return res;
+    while(reader->HasNext() && rows_read < rowCount) {
+        const auto batch_rows = reader->ReadBatch(rowCount - rows_read, &definition_level,
+            &repetition_level, kJ64(res.get()) + rows_read, &values_read);
+        if (batch_rows <= 0 || values_read != batch_rows)
+            throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        rows_read += static_cast<int>(batch_rows);
+    }
+    if (rows_read != rowCount) throw std::runtime_error("Parquet column has an unexpected row count");
+    return res.release();
 }
 
 K PREADER::getTimestampCol(parquet::Int64Reader *reader, int kType, int rowCount){
-    K res = getLongCol(reader, kType, rowCount);
-    std::for_each(&kJ64(res)[0], &kJ64(res)[0] + rowCount, [](int64_t &n){ n-=946684800000000000; });
-    return res;
+    KOwner res{getLongCol(reader, kType, rowCount)};
+    if (rowCount > 0) {
+        std::for_each(kJ64(res.get()), kJ64(res.get()) + rowCount,
+                      [](int64_t &n){ n-=946684800000000000; });
+    }
+    return res.release();
 }
 
 K PREADER::getInt96Col(parquet::Int96Reader *reader, int kType, int rowCount){
     //magic number convert julian date to unix epoch
     int64_t unixTime=946684800000000000;
-    K res = ktn(kType, rowCount);
+    KOwner res{ktn(kType, rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q timestamp column");
     parquet::Int96 value;
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     for(int i=0;i<rowCount;i++){
         reader->ReadBatch(1, &definition_level, &repetition_level, &value, &values_read);
-        kJ(res)[i]=parquet::Int96GetNanoSeconds(value)-unixTime;
+        if (values_read != 1) throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        kJ(res.get())[i]=parquet::Int96GetNanoSeconds(value)-unixTime;
     }
-    return res;
+    return res.release();
 }
 
 K PREADER::getFloatCol(parquet::FloatReader *reader, int kType, int rowCount){
-    K res = ktn(kType, rowCount);
+    KOwner res{ktn(kType, rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q real column");
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
-    while(reader->HasNext())
-        rows_read += reader->ReadBatch(rowCount, &definition_level, &repetition_level, 
-                                             &kE(res)[rows_read], &values_read);
-    return res;
+    while(reader->HasNext() && rows_read < rowCount) {
+        const auto batch_rows = reader->ReadBatch(rowCount - rows_read, &definition_level,
+            &repetition_level, kE(res.get()) + rows_read, &values_read);
+        if (batch_rows <= 0 || values_read != batch_rows)
+            throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        rows_read += static_cast<int>(batch_rows);
+    }
+    if (rows_read != rowCount) throw std::runtime_error("Parquet column has an unexpected row count");
+    return res.release();
 }
 
 K PREADER::getDoubleCol(parquet::DoubleReader *reader, int kType, int rowCount){
-    K res = ktn(kType,rowCount);
+    KOwner res{ktn(kType,rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q float column");
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     int rows_read=0;
-    while(reader->HasNext())
-        rows_read += reader->ReadBatch(rowCount, &definition_level, &repetition_level, 
-                                             &kF(res)[rows_read], &values_read);
-    return res;
+    while(reader->HasNext() && rows_read < rowCount) {
+        const auto batch_rows = reader->ReadBatch(rowCount - rows_read, &definition_level,
+            &repetition_level, kF(res.get()) + rows_read, &values_read);
+        if (batch_rows <= 0 || values_read != batch_rows)
+            throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        rows_read += static_cast<int>(batch_rows);
+    }
+    if (rows_read != rowCount) throw std::runtime_error("Parquet column has an unexpected row count");
+    return res.release();
 }
 
 K PREADER::getByteCol(parquet::ByteArrayReader *reader, int kType, int rowCount){
-    K res = ktn(kType, 0);
+    KOwner res{ktn(kType, 0)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q byte column");
     parquet::ByteArray value;
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     for(int i=0;i<rowCount;i++){
         reader->ReadBatch(1, &definition_level, &repetition_level, &value, &values_read);
-        K bytes = ktn(KG, value.len); 
-        std::copy(&value.ptr[0], &value.ptr[0]+value.len, kG(bytes));
-        jk(&res,bytes);
+        if (values_read != 1) throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        KOwner bytes{ktn(KG, value.len)};
+        if (!bytes.get()) throw std::runtime_error("Failed to allocate q byte value");
+        if (value.len) std::copy(value.ptr, value.ptr + value.len, kG(bytes.get()));
+        jk(res.address(), bytes.release());
     }
-    return res;
+    return res.release();
 }
 
 K PREADER::getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCount){
-    K res = ktn(0,0);
+    KOwner res{ktn(0,0)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q string column");
     parquet::ByteArray value;
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     for(int i=0;i<rowCount;i++){
         reader->ReadBatch(1, &definition_level, &repetition_level, &value, &values_read);
-        jk(&res,kpn((char*)&value.ptr[0], value.len));
+        if (values_read != 1) throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        char* bytes = value.len
+            ? reinterpret_cast<char*>(const_cast<uint8_t*>(value.ptr))
+            : const_cast<char*>("");
+        KOwner string{kpn(bytes, value.len)};
+        if (!string.get()) throw std::runtime_error("Failed to allocate q string value");
+        jk(res.address(), string.release());
     }
-    return res;
+    return res.release();
 }
 
 K PREADER::getSymCol(parquet::ByteArrayReader *reader, int kType, int rowCount){
-    K res = ktn(KS,rowCount);
+    KOwner res{ktn(KS,rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q symbol column");
     parquet::ByteArray value;
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     for(int i=0;i<rowCount;i++){
         reader->ReadBatch(1, &definition_level, &repetition_level, &value, &values_read);
-        kS(res)[i]=sn((char*)&value.ptr[0], value.len);
+        if (values_read != 1) throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        char* text = value.len
+            ? reinterpret_cast<char*>(const_cast<uint8_t*>(value.ptr))
+            : const_cast<char*>("");
+        kS(res.get())[i]=sn(text, value.len);
     }
-    return res;
+    return res.release();
 }
 
 K PREADER::getFLBACol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount){
     int size = reader->descr()->type_length();
-    K res = size == 1 ? ktn(KG,rowCount) : ktn(0,0);
+    KOwner res{size == 1 ? ktn(KG,rowCount) : ktn(0,0)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q fixed byte array column");
     parquet::FLBA value;
     int16_t definition_level;
     int16_t repetition_level;
@@ -239,30 +300,35 @@ K PREADER::getFLBACol(parquet::FixedLenByteArrayReader *reader, int kType, int r
     if(size ==1){
         for(int i=0;i<rowCount;i++){
             reader->ReadBatch(1, &definition_level, &repetition_level, &value, &values_read);
-            kG(res)[i]=*value.ptr;
+            if (values_read != 1) throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+            kG(res.get())[i]=*value.ptr;
         }
     } else {
         for(int i=0;i<rowCount;i++){
             reader->ReadBatch(1, &definition_level, &repetition_level, &value, &values_read);
-            K bytes = ktn(KG, size); 
-            std::copy(&value.ptr[0], &value.ptr[0]+size, kG(bytes));
-            jk(&res,bytes); 
+            if (values_read != 1) throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+            KOwner bytes{ktn(KG, size)};
+            if (!bytes.get()) throw std::runtime_error("Failed to allocate q fixed byte value");
+            std::copy(value.ptr, value.ptr + size, kG(bytes.get()));
+            jk(res.address(), bytes.release());
         }           
     }
-    return res;
+    return res.release();
 }
 
 #if KXVER>=3
 K PREADER::getUUIDCol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount){
-    K res = ktn(kType,rowCount);
+    KOwner res{ktn(kType,rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q UUID column");
     parquet::FLBA value;
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
     for(int i=0;i<rowCount;i++){
         reader->ReadBatch(1, &definition_level, &repetition_level, &value, &values_read);
-        std::copy(&value.ptr[0], &value.ptr[0]+16, kU(res)[i].g);
+        if (values_read != 1) throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        std::copy(value.ptr, value.ptr + 16, kU(res.get())[i].g);
     }
-    return res;
+    return res.release();
 }
 #endif

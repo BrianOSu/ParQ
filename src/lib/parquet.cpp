@@ -15,6 +15,7 @@
 */
 
 #include <parquet.hpp>
+#include <stdexcept>
 
 using namespace KDB::PARQ;
 
@@ -52,29 +53,31 @@ K PKDB::loadReader(std::string fileName){
         instance = std::move(reader);
         return kb(1);
     } catch (const std::exception& e) {
-            char* error = const_cast<char*>(e.what());
-            return orr(error);
+        return kerror(e.what());
     }
 }
 
 K PKDB::readGroup(std::string fileName, int group, K cols) {
     try {
         std::shared_ptr<parquet::ParquetFileReader> filerReader = PREADER::open_reader(fileName.c_str());
+        if (group < 0 || group >= filerReader->metadata()->num_row_groups()) {
+            throw std::out_of_range("Row group index is out of range");
+        }
         std::shared_ptr<parquet::RowGroupReader> row_group_reader = filerReader->RowGroup(group);
+        const bool selected = cols && cols->t == KS && cols->n > 0;
 
-        K result = readTable(
+        KOwner result{readTable(
             row_group_reader,
-            cols->n ? cols->n : row_group_reader->metadata()->num_columns(),
+            selected ? cols->n : row_group_reader->metadata()->num_columns(),
             row_group_reader->metadata()->num_rows(),
             cols
-        );
+        )};
 
         filerReader->Close();
-        return result;
+        return result.release();
 
     } catch (const std::exception& e) {
-        char* error = const_cast<char*>(e.what());
-        return orr(error);
+        return kerror(e.what());
     }
 }
 
@@ -85,7 +88,8 @@ void PKDB::updateMetaData(){
 }
 
 K PKDB::readCurrentGroup(K cols) const {
-    return readTable(row_group_reader_, cols->n ? cols->n : numColumns_, numRows_, cols);
+    const bool selected = cols && cols->t == KS && cols->n > 0;
+    return readTable(row_group_reader_, selected ? cols->n : numColumns_, numRows_, cols);
 }
 
 bool PKDB::advanceRowGroup() {
@@ -109,19 +113,27 @@ K PKDB::readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader,
                                          int num_rows,
                                          K cols){
     //This will hold the column names
-    K colNames = ktn(KS,num_cols);
+    KOwner colNames{ktn(KS,num_cols)};
     //This will hold column values
-    K colValues = ktn(0,0);
+    KOwner colValues{ktn(0,0)};
+    if (!colNames.get() || !colValues.get()) {
+        throw std::runtime_error("Failed to allocate q table columns");
+    }
 
     for(int i=0; i<num_cols; i++){
-        int index = cols->n ? getColIndex(row_group_reader, std::string{kS(cols)[i]}) : i;
+		const bool selected = cols && cols->t == KS && cols->n > 0;
+		int index = selected ? getColIndex(row_group_reader, std::string{kS(cols)[i]}) : i;
 		if(index < 0) return krr(kS(cols)[i]);
-        kS(colNames)[i] = PKDB::readColName(row_group_reader, index);
-        jk(&colValues, PKDB::getColData(row_group_reader, index, num_rows));
+        kS(colNames.get())[i] = PKDB::readColName(row_group_reader, index);
+        KOwner column{PKDB::getColData(row_group_reader, index, num_rows)};
+        if (!column.get()) throw std::runtime_error("Failed to allocate a q column");
+        jk(colValues.address(), column.release());
     }
 
     //Return a table to the process
-    return xT(xD(colNames, colValues));
+    KOwner dictionary{xD(colNames.release(), colValues.release())};
+    if (!dictionary.get()) throw std::runtime_error("Failed to create q table dictionary");
+    return xT(dictionary.release());
 }
 
 int PKDB::getColIndex(std::shared_ptr<parquet::RowGroupReader> row_group_reader, std::string colName){
@@ -204,8 +216,7 @@ K PWRITE::write(K table, std::string fileName, bool single,
         if(single) file_writer->Close();
         return kb(1);
     }catch (const std::exception& e) {
-            char* error = const_cast<char*>(e.what());
-            return orr(error);
+        return kerror(e.what());
     }        
 }
 

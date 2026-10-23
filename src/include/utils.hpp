@@ -18,7 +18,9 @@
 #define KDB_UTILS
 
 #include <k.h>
+#include <cstring>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 //Undefine these fro k.h to use a C++ style equivalent.
@@ -50,8 +52,38 @@ inline J64* kJ64(K x){ return reinterpret_cast<J64*>(x->G0); }
 inline U* kU(K x){return reinterpret_cast<U*>(x->G0);}
 #endif
 
-inline K kerror (const char* text) { return krr(const_cast<S>(text)); }
-inline K kerror (std::string text) { return krr(const_cast<S>(text.c_str())); }
+inline K kerror (const char* text) {
+    static thread_local char message[1024];
+    std::strncpy(message, text ? text : "Unknown ParQ error", sizeof(message) - 1);
+    message[sizeof(message) - 1] = '\0';
+    return krr(message);
+}
+inline K kerror (const std::string& text) {
+    return kerror(text.c_str());
+}
+
+// Owns one q value until it is passed to another q API function.
+class KOwner {
+public:
+    explicit KOwner(K value = nullptr) noexcept : value_(value) {}
+    ~KOwner() noexcept { if (value_) r0(value_); }
+
+    // Avoid multiple KOwners owning the same K value and releasing via r0 twice
+    // This disables the copy constructor. Code like KOwner copy = original; will fail to compile.
+    KOwner(const KOwner&) = delete;
+    // This disables copy assignment. Code like copy = original; will also fail to compile.
+    KOwner& operator=(const KOwner&) = delete;
+
+    K get() const noexcept { return value_; }
+    K* address() noexcept { return &value_; }
+    K release() noexcept {
+        K value = value_;
+        value_ = nullptr;
+        return value;
+    }
+
+private:
+    K value_;
+};
 
 #endif
-

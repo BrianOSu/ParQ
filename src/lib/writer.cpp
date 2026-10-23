@@ -32,7 +32,8 @@ std::shared_ptr<parquet::ParquetFileWriter> WRITER::OpenFile(std::string fileNam
     builder.compression(codec);
     std::shared_ptr<parquet::WriterProperties> props = builder.build();
     return parquet::ParquetFileWriter::Open(out_file.ValueOrDie(), schema, props, 
-                                            metadata->n ? KeyValueMetadata(metadata) : NULLPTR);
+                                            metadata && metadata->t == XD && metadata->n > 0
+                                                ? KeyValueMetadata(metadata) : NULLPTR);
 }
 
 std::shared_ptr<GroupNode> WRITER::SetupSchema(K names, K values, int numCols){
