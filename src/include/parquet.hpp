@@ -19,17 +19,18 @@
 
 #include <reader.hpp>
 #include <writer.hpp>
+#include <memory>
+#include <string>
 
 namespace KDB{
     namespace PARQ{
         class PKDB{
             public:
                 PKDB(std::shared_ptr<parquet::ParquetFileReader> filerReader);
-                ~PKDB();
+                ~PKDB() noexcept;
 
-                static PKDB& getInstance(){return *instance;};
+                static PKDB* getInstance() noexcept { return instance.get(); }
                 static K loadReader(std::string fileName);
-                static void updateMetaData();
                 static K readGroup(std::string fileName, int group, K cols);
                 static K readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader, 
                                     int num_cols,
@@ -39,30 +40,38 @@ namespace KDB{
                 static S readColName(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index);
                 static K getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows);
                 static K close();
-                static void incrementCurrentRowGroup(){instance->currentRowGroup++;};
-
-                std::shared_ptr<parquet::ParquetFileReader> filerReader_;
-                std::shared_ptr<const parquet::KeyValueMetadata> key_value_metadata;
-                std::shared_ptr<parquet::RowGroupReader> row_group_reader;
-                const parquet::RowGroupMetaData* metaData;
-                int numColumns;
-                int numRows;
-                int totalRowGroups;
-                int currentRowGroup;
+                K readCurrentGroup(K cols) const;
+                bool advanceRowGroup();
+                std::string schema() const;
+                std::shared_ptr<const parquet::KeyValueMetadata> keyValueMetadata() const;
+                int currentRowGroup() const noexcept { return currentRowGroup_; }
+                int totalRowGroups() const noexcept { return totalRowGroups_; }
             private:
                 PKDB(const PKDB&) = delete;
                 void operator=(const PKDB&) = delete;
-                
-                static PKDB* instance;
+
+                void updateMetaData();
+                void closeFile();
+
+                std::shared_ptr<parquet::ParquetFileReader> filerReader_;
+                std::shared_ptr<const parquet::KeyValueMetadata> key_value_metadata_;
+                std::shared_ptr<parquet::RowGroupReader> row_group_reader_;
+                const parquet::RowGroupMetaData* metaData_ = nullptr;
+                int numColumns_ = 0;
+                int numRows_ = 0;
+                int totalRowGroups_ = 0;
+                int currentRowGroup_ = 0;
+                bool closed_ = false;
+                static std::unique_ptr<PKDB> instance;
                 
         };
 
         class PWRITE{
             public:
                 PWRITE(std::shared_ptr<parquet::ParquetFileWriter> fileWriter);
-                ~PWRITE();
+                ~PWRITE() noexcept;
 
-                static PWRITE& getInstance(){return *instance;};
+                static PWRITE* getInstance() noexcept { return instance.get(); }
                 static std::shared_ptr<parquet::ParquetFileWriter> open_file_writer(K colNames, 
                                                                                     K colValues, 
                                                                                     std::string fileName,
@@ -74,15 +83,15 @@ namespace KDB{
                                parquet::Compression::type codec, bool append, K metadata);
                 static K close();
 
-                std::shared_ptr<GroupNode> schema_;
-                std::shared_ptr<parquet::ParquetFileWriter> fileWriter_;
-                int currentRowGroup;
-                
             private:
                 PWRITE(const PWRITE&) = delete;
                 void operator=(const PWRITE&) = delete;
-                
-                static PWRITE* instance;
+
+                void closeFile();
+                std::shared_ptr<parquet::ParquetFileWriter> fileWriter_;
+                int currentRowGroup_ = 0;
+                bool closed_ = false;
+                static std::unique_ptr<PWRITE> instance;
         };
     }
 }

@@ -18,28 +18,38 @@
 
 using namespace KDB::PARQ;
 
-PKDB* PKDB::instance;
+std::unique_ptr<PKDB> PKDB::instance{};
 
 PKDB::PKDB(std::shared_ptr<parquet::ParquetFileReader> filerReader)
         : filerReader_(filerReader)
 {
     //When opening files, point at the first row group
-    currentRowGroup=0;
-    row_group_reader=filerReader_->RowGroup(currentRowGroup);
-    key_value_metadata=filerReader_->metadata()->key_value_metadata();
-    totalRowGroups=filerReader_->metadata()->num_row_groups();
+    row_group_reader_ = filerReader_->RowGroup(currentRowGroup_);
+    key_value_metadata_ = filerReader_->metadata()->key_value_metadata();
+    totalRowGroups_ = filerReader_->metadata()->num_row_groups();
+    updateMetaData();
 }
 
-PKDB::~PKDB(){
-    //Close the FD
-    filerReader_->Close();
+PKDB::~PKDB() noexcept {
+    try {
+        closeFile();
+    } catch (...) {
+        // Destructors must not let exceptions escape. The reader's shared
+        // owner will still release its resources when this object is destroyed.
+    }
+}
+
+void PKDB::closeFile() {
+    if (!closed_ && filerReader_) {
+        closed_ = true;
+        filerReader_->Close();
+    }
 }
 
 K PKDB::loadReader(std::string fileName){
     try {
-        if(instance) instance->~PKDB();
-        instance = new PKDB { PREADER::open_reader(fileName.c_str()) };
-        updateMetaData();
+        auto reader = std::make_unique<PKDB>(PREADER::open_reader(fileName.c_str()));
+        instance = std::move(reader);
         return kb(1);
     } catch (const std::exception& e) {
             char* error = const_cast<char*>(e.what());
@@ -69,9 +79,29 @@ K PKDB::readGroup(std::string fileName, int group, K cols) {
 }
 
 void PKDB::updateMetaData(){
-    instance->metaData=instance->row_group_reader->metadata();
-    instance->numColumns=instance->metaData->num_columns();
-    instance->numRows=instance->metaData->num_rows();
+    metaData_ = row_group_reader_->metadata();
+    numColumns_ = metaData_->num_columns();
+    numRows_ = metaData_->num_rows();
+}
+
+K PKDB::readCurrentGroup(K cols) const {
+    return readTable(row_group_reader_, cols->n ? cols->n : numColumns_, numRows_, cols);
+}
+
+bool PKDB::advanceRowGroup() {
+    if (currentRowGroup_ >= totalRowGroups_ - 1) return false;
+    ++currentRowGroup_;
+    row_group_reader_ = filerReader_->RowGroup(currentRowGroup_);
+    updateMetaData();
+    return true;
+}
+
+std::string PKDB::schema() const {
+    return metaData_->schema()->ToString();
+}
+
+std::shared_ptr<const parquet::KeyValueMetadata> PKDB::keyValueMetadata() const {
+    return key_value_metadata_;
 }
 
 K PKDB::readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader,
@@ -107,23 +137,39 @@ K PKDB::getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, in
 }
 
 K PKDB::close(){
-    if(instance) instance->~PKDB();
-    instance=nullptr;
+    try {
+        if (instance) instance->closeFile();
+        instance.reset();
+    } catch (...) {
+        instance.reset();
+        throw;
+    }
     return kb(1);
 }
 
-PWRITE* PWRITE::instance;
+std::unique_ptr<PWRITE> PWRITE::instance{};
 
 PWRITE::PWRITE(std::shared_ptr<parquet::ParquetFileWriter> fileWriter)
         : fileWriter_(fileWriter)
 {
     //When opening files, point at the first row group
-    currentRowGroup=0;
+    currentRowGroup_ = 0;
 }
 
-PWRITE::~PWRITE(){
-    //Close the FD
-    fileWriter_->Close();
+PWRITE::~PWRITE() noexcept {
+    try {
+        closeFile();
+    } catch (...) {
+        // Destructors must not let exceptions escape. Releasing the shared
+        // writer owner still provides a final cleanup path.
+    }
+}
+
+void PWRITE::closeFile() {
+    if (!closed_ && fileWriter_) {
+        closed_ = true;
+        fileWriter_->Close();
+    }
 }
 
 std::shared_ptr<parquet::ParquetFileWriter> PWRITE::open_file_writer(K colNames, 
@@ -149,7 +195,7 @@ K PWRITE::write(K table, std::string fileName, bool single,
                                                                                    fileName, single,
                                                                                    codec, append, metadata);
         if(!instance && !single)
-            instance = new PWRITE {file_writer};
+            instance = std::make_unique<PWRITE>(file_writer);
 
         parquet::RowGroupWriter* rg_writer = file_writer->AppendRowGroup();
         for(int i=0;i<colValues->n;i++)
@@ -164,7 +210,12 @@ K PWRITE::write(K table, std::string fileName, bool single,
 }
 
 K PWRITE::close(){
-    if(instance) instance->~PWRITE();
-    instance=nullptr;
+    try {
+        if (instance) instance->closeFile();
+        instance.reset();
+    } catch (...) {
+        instance.reset();
+        throw;
+    }
     return kb(1);
 }

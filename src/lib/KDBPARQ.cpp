@@ -39,50 +39,45 @@ extern"C"{
         if(cols->t!=KS && cols->n != 0)
             return kerror("Cols must be a list of symbols");
 
-        auto instance = &PKDB::getInstance();
+        auto instance = PKDB::getInstance();
         if(!instance)
 			return kerror("Parquet file not loaded");
 
         try {
-            return instance->readTable(instance->row_group_reader, 
-                                    	cols->n ? cols->n : instance->numColumns, 
-										instance->numRows, 
-										cols);
+            return instance->readCurrentGroup(cols);
         } catch (const std::exception& e) {
             return orr(const_cast<char*>(e.what()));
         }
     }
 
     K nextRowGroup(K /*x*/){
-        auto instance = &PKDB::getInstance();
+        auto instance = PKDB::getInstance();
         if(!instance) return kerror("Parquet file not loaded");
 		
-        if(instance->currentRowGroup==instance->totalRowGroups-1)
+        if (!instance->advanceRowGroup())
             return kerror("Already at the latest row group");
-        instance->incrementCurrentRowGroup();
-        instance->row_group_reader=instance->filerReader_->RowGroup(instance->currentRowGroup);
-        instance->PKDB::updateMetaData();
         return kb(1);
     }
 
     K readSchema(K /*x*/){
-        auto instance = &PKDB::getInstance();
+        auto instance = PKDB::getInstance();
         if(!instance) return kerror("Parquet file not loaded");
         try {
-            return string2k(instance->metaData->schema()->ToString());
+            return string2k(instance->schema());
         } catch (const std::exception& e) {
             return orr(const_cast<char*>(e.what()));
         }
     }
 
     K readKeyValueMetadata(K /*x*/){
-        auto instance = &PKDB::getInstance();
+        auto instance = PKDB::getInstance();
         if(!instance) return kerror("Parquet file not loaded");
         try {
             K key = ktn(KS, 0);
             K value = ktn(KS, 0);
-            if(instance->key_value_metadata){
-                for(auto kv : instance->key_value_metadata->sorted_pairs()) {
+            auto metadata = instance->keyValueMetadata();
+            if(metadata){
+                for(auto kv : metadata->sorted_pairs()) {
                     js(&key,ss((char*)kv.first.c_str()));
                     js(&value,ss((char*)kv.second.c_str()));
                 }
@@ -94,7 +89,7 @@ extern"C"{
     }
 
     K closeP(K /*x*/){
-        auto instance = &PKDB::getInstance();
+        auto instance = PKDB::getInstance();
         if(!instance) return kerror("Parquet file not loaded");
         try {
             return instance->close();
@@ -104,15 +99,15 @@ extern"C"{
     }
 
     K currentRowGroup(K /*x*/){
-        auto instance = &PKDB::getInstance();
+        auto instance = PKDB::getInstance();
         if(!instance) return kerror("Parquet file not loaded");
-        return kj(instance->currentRowGroup);
+        return kj(instance->currentRowGroup());
     }
 
     K totalRowGroup(K /*x*/){
-        auto instance = &PKDB::getInstance();
+        auto instance = PKDB::getInstance();
         if(!instance) return kerror("Parquet file not loaded");
-        return kj(instance->totalRowGroups);
+        return kj(instance->totalRowGroups());
     }
 
     K writer(K table, K filename, K single, K codec, K metadata){
@@ -129,7 +124,7 @@ extern"C"{
     }
 
     K closeW(K /*x*/){
-        auto instance = &PWRITE::getInstance();
+        auto instance = PWRITE::getInstance();
         if(!instance) return kerror("Parquet file not loaded");
         try {
             return instance->close();
