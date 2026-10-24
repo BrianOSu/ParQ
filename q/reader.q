@@ -41,51 +41,50 @@
 
 
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
 // Loading parquet file and additional functions
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------
 
-///
 // Load a given parquet file to make it available for reading
 // and extracting certain information from it
 // @param  File - String/sym
-// @return Bool - 1b if loads, otherwise throws error
+// @return Foreign - handle to the opened reader
 .pq.read.load:.pq.priv.libPath 2:(`initReader;1) 
 
-///
-// Close the currently loaded parquet file
+// Close this reader and release its C++ resources
+// @param  Foreign - handle returned from .pq.read.load
 // @return Bool - 1b if closes, otherwise throws error
 .pq.read.close:.pq.priv.libPath 2:(`closeP;1)
 
-///
 // Returns the current row group being pointed at by the loaded file
+// @param  Foreign - handle returned from .pq.read.load
 // @return Long - Row group,  otherwise throws error
 .pq.read.rowGroup:.pq.priv.libPath 2:(`currentRowGroup;1) 
 
-///
 // Moves to next row group for reading
+// @param  Foreign - handle returned from .pq.read.load
 // @return Bool - 1b if moves, otherwise throws error
 .pq.read.next:.pq.priv.libPath 2:(`nextRowGroup;1)
 
-///
 // Returns the total number of row groups in the loaded file
+// @param  Foreign - handle returned from .pq.read.load
 // @return Long - Total row groups,  otherwise throws error
 .pq.read.totalRowGroup:.pq.priv.libPath 2:(`totalRowGroup;1) 
 
-///
 // Reads the current row group for loaded file
+// @param  Foreign - handle returned from .pq.read.load
 // @param  Cols  - Sym list representing columns to read. 
 //                 (::) or left blank returns all cols
 // @return Table - Data extracted from the parquet file
-.pq.read.multi:.pq.priv.libPath 2:(`readMulti;1) 
+.pq.read.multi:.pq.priv.libPath 2:(`readMulti;2)
 
-///
 // Returns the schema from the currently loaded parquet file
+// @param  Foreign - handle returned from .pq.read.load
 // @return String list - The schema coming directly from the parquet file
 .pq.priv.schema:.pq.priv.libPath 2:(`readSchema;1)
-.pq.read.schema:{[] -1_"\n" vs .pq.priv.schema[]}
+.pq.read.schema:{[h] -1_"\n" vs .pq.priv.schema h}
 
-///
 // Read the key-value-metadata for loaded file
+// @param  Foreign - handle returned from .pq.read.load
 // @return Dictionary - Key Values. Empty dict if key value metadata doesn't exist
 .pq.read.keyValueMeta:.pq.priv.libPath 2:(`readKeyValueMetadata;1)

@@ -19,10 +19,14 @@
 #include <climits>
 #include <exception>
 #include <functional>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <utility>
 
 using namespace KDB::PARQ;
+
+extern "C" void destroyReaderHandle(K handle) noexcept;
 
 namespace {
 
@@ -39,6 +43,57 @@ K qBoundary(Function&& function) noexcept {
 
 bool isFilename(K value) noexcept {
     return value && (value->t == KC || value->t == -KC || value->t == -KS);
+}
+
+struct ReaderHandle {
+    explicit ReaderHandle(std::unique_ptr<PKDB> value) : reader(std::move(value)) {}
+    std::mutex mutex;
+    std::unique_ptr<PKDB> reader;
+};
+
+std::string filenameFrom(K value);
+
+ReaderHandle& readerState(K handle) {
+    if (!handle || handle->t != 112 || handle->n != 2 ||
+        kK(handle)[0] != reinterpret_cast<K>(&destroyReaderHandle)) {
+        throw std::invalid_argument("Invalid Parquet reader handle");
+    }
+    auto* state = reinterpret_cast<ReaderHandle*>(kK(handle)[1]);
+    if (!state || !state->reader) {
+        throw std::invalid_argument("Parquet reader is closed");
+    }
+    return *state;
+}
+
+template <typename Function>
+auto withReader(K handle, Function&& function) {
+    ReaderHandle& state = readerState(handle);
+    std::lock_guard<std::mutex> lock{state.mutex};
+    if (!state.reader) throw std::invalid_argument("Parquet reader is closed");
+    return std::forward<Function>(function)(*state.reader);
+}
+
+K openReader(K filename) {
+    const std::string path = filenameFrom(filename);
+    auto state = std::make_unique<ReaderHandle>(
+        std::make_unique<PKDB>(PREADER::open_reader(path.c_str()))
+    );
+    K handle = ktn(0, 2);
+    if (!handle) throw std::runtime_error("Failed to allocate Parquet reader handle");
+    kK(handle)[0] = reinterpret_cast<K>(&destroyReaderHandle);
+    kK(handle)[1] = reinterpret_cast<K>(state.get());
+    handle->t = 112;
+    state.release();
+    return handle;
+}
+
+K closeReader(K handle) {
+    ReaderHandle& state = readerState(handle);
+    std::lock_guard<std::mutex> lock{state.mutex};
+    if (!state.reader) throw std::invalid_argument("Parquet reader is already closed");
+    state.reader->close();
+    state.reader.reset();
+    return kb(1);
 }
 
 std::string filenameFrom(K value) {
@@ -127,6 +182,13 @@ void validateMetadata(K metadata) {
 
 } // namespace
 
+extern "C" void destroyReaderHandle(K handle) noexcept {
+    if (!handle || handle->n != 2 || !kK(handle)[1]) return;
+    auto* state = reinterpret_cast<ReaderHandle*>(kK(handle)[1]);
+    kK(handle)[1] = nullptr;
+    delete state;
+}
+
 extern "C" {
     K readGroup(K filename, K group, K cols) {
         return qBoundary([&]() -> K {
@@ -141,45 +203,36 @@ extern "C" {
     K initReader(K filename) {
         return qBoundary([&]() -> K {
             if (!isFilename(filename)) return kerror("File name must be a string or symbol");
-            return PKDB::loadReader(filenameFrom(filename));
+            return openReader(filename);
         });
     }
 
-    K readMulti(K cols) {
+    K readMulti(K handle, K cols) {
         return qBoundary([&]() -> K {
             if (!isColumnSelection(cols)) return kerror("Cols must be a symbol list or empty");
-            auto instance = PKDB::getInstance();
-            if (!instance) return kerror("Parquet file not loaded");
-            return instance->readCurrentGroup(cols);
+            return withReader(handle, [&](PKDB& reader) { return reader.readCurrentGroup(cols); });
         });
     }
 
-    K nextRowGroup(K /*x*/) {
+    K nextRowGroup(K handle) {
         return qBoundary([&]() -> K {
-            auto instance = PKDB::getInstance();
-            if (!instance) return kerror("Parquet file not loaded");
-            if (!instance->advanceRowGroup()) return kerror("Already at the latest row group");
+            if (!withReader(handle, [](PKDB& reader) { return reader.advanceRowGroup(); })) return kerror("Already at the latest row group");
             return kb(1);
         });
     }
 
-    K readSchema(K /*x*/) {
+    K readSchema(K handle) {
         return qBoundary([&]() -> K {
-            auto instance = PKDB::getInstance();
-            if (!instance) return kerror("Parquet file not loaded");
-            return string2k(instance->schema());
+            return withReader(handle, [](PKDB& reader) { return string2k(reader.schema()); });
         });
     }
 
-    K readKeyValueMetadata(K /*x*/) {
+    K readKeyValueMetadata(K handle) {
         return qBoundary([&]() -> K {
-            auto instance = PKDB::getInstance();
-            if (!instance) return kerror("Parquet file not loaded");
-
             KOwner key{ktn(KS, 0)};
             KOwner value{ktn(KS, 0)};
             if (!key.get() || !value.get()) return kerror("Failed to allocate q metadata values");
-            auto metadata = instance->keyValueMetadata();
+            auto metadata = withReader(handle, [](PKDB& reader) { return reader.keyValueMetadata(); });
             if (metadata) {
                 for (const auto& item : metadata->sorted_pairs()) {
                     js(key.address(), ss(const_cast<char*>(item.first.c_str())));
@@ -190,27 +243,21 @@ extern "C" {
         });
     }
 
-    K closeP(K /*x*/) {
+    K closeP(K instance) {
         return qBoundary([&]() -> K {
-            auto instance = PKDB::getInstance();
-            if (!instance) return kerror("Parquet file not loaded");
-            return PKDB::close();
+            return closeReader(instance);
         });
     }
 
-    K currentRowGroup(K /*x*/) {
+    K currentRowGroup(K handle) {
         return qBoundary([&]() -> K {
-            auto instance = PKDB::getInstance();
-            if (!instance) return kerror("Parquet file not loaded");
-            return kj(instance->currentRowGroup());
+            return withReader(handle, [](PKDB& reader) { return kj(reader.currentRowGroup()); });
         });
     }
 
-    K totalRowGroup(K /*x*/) {
+    K totalRowGroup(K handle) {
         return qBoundary([&]() -> K {
-            auto instance = PKDB::getInstance();
-            if (!instance) return kerror("Parquet file not loaded");
-            return kj(instance->totalRowGroups());
+            return withReader(handle, [](PKDB& reader) { return kj(reader.totalRowGroups()); });
         });
     }
 

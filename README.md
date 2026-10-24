@@ -10,6 +10,8 @@ Email: b.osullivan@live.ie
 
 LinkedIn: https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
 
+**Note**: This has evolved into an AI experimentation library
+
 ## Getting Started
 
 ### Prerequisites
@@ -102,55 +104,55 @@ q)//Close the writer to finalise the file
 q).pq.write.close[]
 1b
 q)//Open the file to read multiple row groups
-q).pq.read.load`t
+q)tab:.pq.read.load`t
 1b
-q).pq.read.schema[]
+q).pq.read.schema[tab]
 "message schema {"
 "  required int64 a (Int(bitWidth=64, isSigned=true));"
 "  required binary b (String);"
 ,"}"
 //Current rowGroup
-q).pq.read.rowGroup[]
+q).pq.read.rowGroup[tab]
 0
 //Total row groups
-q).pq.read.totalRowGroup[]
+q).pq.read.totalRowGroup[tab]
 2
 //Read the first row group
-q)t2:.pq.read.multi[]
+q)t2:.pq.read.multi[tab; ::]
 q)t~t2
 1b
 //Move to the next row group
-q).pq.read.next[]
+q).pq.read.next[tab]
 1b
 //Read the current row group
-q)t2,:.pq.read.multi[]
+q)t2,:.pq.read.multi[tab; ::]
 q)t2~t
 0b
 q)t2~t,t
 1b
-q).pq.read.next[]
+q).pq.read.next[tab]
 'Already at the latest row group
   [0]  .pq.next[]
        ^
 //Close file when finished reading
-q).pq.read.close[]
+q).pq.read.close[tab]
 1b
 ```
 Multi-threaded rowgroup reading using peach with slaves
 ```q
-q).pq.read.load[`t.parquet]
+q)tab:.pq.read.load[`t.parquet]
 1b
-q)t:raze .pq.read.group[`t.parquet;;(::)] peach til .pq.read.totalRowGroup[]
-q).pq.read.close[]
+q)t:raze .pq.read.group[`t.parquet;;(::)] peach til .pq.read.totalRowGroup[tab]
+q).pq.read.close[tab]
 1b
 ```
 It is much quicker to read specific columns into memory if you don't need the full table.
 ```q
 //Load the table
-q).pq.read.load`t.parquet
+q)tab:.pq.read.load`t.parquet
 1b
 //Check the schema
-q).pq.read.schema[]
+q).pq.read.schema[tab]
 "message schema {"
 "  required boolean bool;"
 "  required fixed_len_byte_array(16) guid (UUID);"
@@ -173,7 +175,7 @@ q).pq.read.schema[]
 "  required int32 time (Time(isAdjustedToUTC=false, timeUnit=milliseconds));"
 "}"
 //Read only the float and int columns
-q).pq.read.multi[`float`int]
+q).pq.read.multi[tab; `float`int]
 float    int       
 -------------------
 57.68374 973227945 
@@ -181,7 +183,7 @@ float    int
 52.43847 989873294 
 ..
 //Close the file
-q).pq.read.close[]
+q).pq.read.close[tab]
 1b
 //Read guid, bool and int column from first row group
 q).pq.read.group[`t.parquet; 0; `guid`bool`int]
@@ -213,9 +215,9 @@ Available functions are:
 q)t:([]date:10?.z.d; price:10?100)
 q).pq.write.singleMeta[t; "t.parquet"; (`date`price)!(`date`long)]
 1b
-q).pq.read.load"t.parquet"
+q)tab:.pq.read.load"t.parquet"
 1b
-q).pq.read.keyValueMeta[]
+q).pq.read.keyValueMeta[tab]
 date | date
 price| long
 ```

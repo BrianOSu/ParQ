@@ -52,10 +52,10 @@ t:([]
 // Test reading in Multiple row group parquet file
 //------------------------------------------------------
 
-.pq.read.load`t.parquet
+tab:.pq.read.load`t.parquet
 
 //Read the first row group of the parquet file
-\ts t1:.pq.read.multi[]
+\ts t1:.pq.read.multi[tab; ::]
 //307 90721072
 //3020 1259524912
 
@@ -71,12 +71,12 @@ t1~t2
 //19 41943632
 t3~neg[n1]#select int,bool from t
 
-.pq.read.next[]
-\ts t1,:.pq.read.multi[]
+.pq.read.next[tab]
+\ts t1,:.pq.read.multi[tab; ::]
 //375 151538448
 //3489 2232603408
 //Close the file when done reading
-.pq.read.close[]
+.pq.read.close[tab]
 
 
 //------------------------------------------------------

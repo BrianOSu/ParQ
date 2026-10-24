@@ -28,9 +28,8 @@ namespace KDB{
             public:
                 PKDB(std::shared_ptr<parquet::ParquetFileReader> filerReader);
                 ~PKDB() noexcept;
+                void close();
 
-                static PKDB* getInstance() noexcept { return instance.get(); }
-                static K loadReader(std::string fileName);
                 static K readGroup(std::string fileName, int group, K cols);
                 static K readTable(std::shared_ptr<parquet::RowGroupReader> row_group_reader, 
                                     int num_cols,
@@ -39,7 +38,6 @@ namespace KDB{
                 static int getColIndex(std::shared_ptr<parquet::RowGroupReader> row_group_reader, std::string colName);
                 static S readColName(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index);
                 static K getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows);
-                static K close();
                 K readCurrentGroup(K cols) const;
                 bool advanceRowGroup();
                 std::string schema() const;
@@ -48,7 +46,7 @@ namespace KDB{
                 int totalRowGroups() const noexcept { return totalRowGroups_; }
             private:
                 PKDB(const PKDB&) = delete;
-                void operator=(const PKDB&) = delete;
+                PKDB& operator=(const PKDB&) = delete;
 
                 void updateMetaData();
                 void closeFile();
@@ -62,8 +60,6 @@ namespace KDB{
                 int totalRowGroups_ = 0;
                 int currentRowGroup_ = 0;
                 bool closed_ = false;
-                static std::unique_ptr<PKDB> instance;
-                
         };
 
         class PWRITE{

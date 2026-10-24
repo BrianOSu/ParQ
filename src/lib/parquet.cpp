@@ -16,13 +16,12 @@
 
 #include <parquet.hpp>
 #include <stdexcept>
+#include <utility>
 
 using namespace KDB::PARQ;
 
-std::unique_ptr<PKDB> PKDB::instance{};
-
 PKDB::PKDB(std::shared_ptr<parquet::ParquetFileReader> filerReader)
-        : filerReader_(filerReader)
+        : filerReader_(std::move(filerReader))
 {
     //When opening files, point at the first row group
     row_group_reader_ = filerReader_->RowGroup(currentRowGroup_);
@@ -42,43 +41,32 @@ PKDB::~PKDB() noexcept {
 
 void PKDB::closeFile() {
     if (!closed_ && filerReader_) {
-        closed_ = true;
         filerReader_->Close();
+        closed_ = true;
     }
 }
 
-K PKDB::loadReader(std::string fileName){
-    try {
-        auto reader = std::make_unique<PKDB>(PREADER::open_reader(fileName.c_str()));
-        instance = std::move(reader);
-        return kb(1);
-    } catch (const std::exception& e) {
-        return kerror(e.what());
-    }
+void PKDB::close() {
+    closeFile();
 }
 
 K PKDB::readGroup(std::string fileName, int group, K cols) {
-    try {
-        std::shared_ptr<parquet::ParquetFileReader> filerReader = PREADER::open_reader(fileName.c_str());
-        if (group < 0 || group >= filerReader->metadata()->num_row_groups()) {
-            throw std::out_of_range("Row group index is out of range");
-        }
-        std::shared_ptr<parquet::RowGroupReader> row_group_reader = filerReader->RowGroup(group);
-        const bool selected = cols && cols->t == KS && cols->n > 0;
-
-        KOwner result{readTable(
-            row_group_reader,
-            selected ? cols->n : row_group_reader->metadata()->num_columns(),
-            row_group_reader->metadata()->num_rows(),
-            cols
-        )};
-
-        filerReader->Close();
-        return result.release();
-
-    } catch (const std::exception& e) {
-        return kerror(e.what());
+    std::shared_ptr<parquet::ParquetFileReader> filerReader = PREADER::open_reader(fileName.c_str());
+    if (group < 0 || group >= filerReader->metadata()->num_row_groups()) {
+        throw std::out_of_range("Row group index is out of range");
     }
+    std::shared_ptr<parquet::RowGroupReader> row_group_reader = filerReader->RowGroup(group);
+    const bool selected = cols && cols->t == KS && cols->n > 0;
+
+    KOwner result{readTable(
+        row_group_reader,
+        selected ? cols->n : row_group_reader->metadata()->num_columns(),
+        row_group_reader->metadata()->num_rows(),
+        cols
+    )};
+
+    filerReader->Close();
+    return result.release();
 }
 
 void PKDB::updateMetaData(){
@@ -148,17 +136,6 @@ K PKDB::getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, in
 	return PREADER::readColumns(row_group_reader->Column(index), num_rows);
 }
 
-K PKDB::close(){
-    try {
-        if (instance) instance->closeFile();
-        instance.reset();
-    } catch (...) {
-        instance.reset();
-        throw;
-    }
-    return kb(1);
-}
-
 std::unique_ptr<PWRITE> PWRITE::instance{};
 
 PWRITE::PWRITE(std::shared_ptr<parquet::ParquetFileWriter> fileWriter)
@@ -200,24 +177,20 @@ std::shared_ptr<parquet::ParquetFileWriter> PWRITE::open_file_writer(K colNames,
 
 K PWRITE::write(K table, std::string fileName, bool single, 
                 parquet::Compression::type codec, bool append, K metadata){
-    try{
-        K colValues=kK(table->k)[1];
-        K colNames=kK(table->k)[0];
-        std::shared_ptr<parquet::ParquetFileWriter> file_writer = open_file_writer(colNames, colValues,
-                                                                                   fileName, single,
-                                                                                   codec, append, metadata);
-        if(!instance && !single)
-            instance = std::make_unique<PWRITE>(file_writer);
+    K colValues=kK(table->k)[1];
+    K colNames=kK(table->k)[0];
+    std::shared_ptr<parquet::ParquetFileWriter> file_writer = open_file_writer(colNames, colValues,
+                                                                               fileName, single,
+                                                                               codec, append, metadata);
+    if(!instance && !single)
+        instance = std::make_unique<PWRITE>(file_writer);
 
-        parquet::RowGroupWriter* rg_writer = file_writer->AppendRowGroup();
-        for(int i=0;i<colValues->n;i++)
-                WRITER::writeColumn(kK(colValues)[i], rg_writer);
+    parquet::RowGroupWriter* rg_writer = file_writer->AppendRowGroup();
+    for(int i=0;i<colValues->n;i++)
+            WRITER::writeColumn(kK(colValues)[i], rg_writer);
 
-        if(single) file_writer->Close();
-        return kb(1);
-    }catch (const std::exception& e) {
-        return kerror(e.what());
-    }        
+    if(single) file_writer->Close();
+    return kb(1);
 }
 
 K PWRITE::close(){
