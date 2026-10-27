@@ -18,6 +18,7 @@
 #define KDB_PARQUET_WRITER
 
 #include <utils.hpp>
+#include <kowner.hpp>
 #include <arrow/io/file.h>
 #include <arrow/util/key_value_metadata.h>
 #include <parquet/api/writer.h>

@@ -18,6 +18,7 @@
 #define KDB_PARQUET_READER
 
 #include <utils.hpp>
+#include <kowner.hpp>
 #include <parquet/api/reader.h>
 
 using parquet::LogicalType;

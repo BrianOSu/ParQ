@@ -62,28 +62,4 @@ inline K kerror (const std::string& text) {
     return kerror(text.c_str());
 }
 
-// Owns one q value until it is passed to another q API function.
-class KOwner {
-public:
-    explicit KOwner(K value = nullptr) noexcept : value_(value) {}
-    ~KOwner() noexcept { if (value_) r0(value_); }
-
-    // Avoid multiple KOwners owning the same K value and releasing via r0 twice
-    // This disables the copy constructor. Code like KOwner copy = original; will fail to compile.
-    KOwner(const KOwner&) = delete;
-    // This disables copy assignment. Code like copy = original; will also fail to compile.
-    KOwner& operator=(const KOwner&) = delete;
-
-    K get() const noexcept { return value_; }
-    K* address() noexcept { return &value_; }
-    K release() noexcept {
-        K value = value_;
-        value_ = nullptr;
-        return value;
-    }
-
-private:
-    K value_;
-};
-
 #endif

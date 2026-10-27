@@ -15,6 +15,7 @@
 */
 
 #include <parquet.hpp>
+#include <kowner.hpp>
 #include <stdexcept>
 #include <utility>
 
