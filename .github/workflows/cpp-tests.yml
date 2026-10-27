@@ -1,0 +1,13 @@
+name: C++ tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  handle-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run standalone q handle tests
+        run: make test

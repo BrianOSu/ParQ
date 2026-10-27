@@ -5,8 +5,18 @@ CXXFLAGS = -std=c++20
 LDFLAGS = -shared
 LDLIBS = -lparquet
 KDBFLAGS = -pthread src/l64/c.o
+TEST_BIN = build/k_handles_test
 
 default: ParQ
+
+.PHONY: default test clean
+
+test: $(TEST_BIN)
+	./$(TEST_BIN)
+
+$(TEST_BIN): tests/k_handles_test.cpp src/include/kowner.hpp src/include/qforeign.hpp src/l64/c.o
+	mkdir -p build
+	$(CC) $(CPPFLAGS) $(CXXFLAGS) tests/k_handles_test.cpp -pthread src/l64/c.o -o $@
 
 ParQ: parquet.o writer.o reader.o
 	mkdir -p install
