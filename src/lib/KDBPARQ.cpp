@@ -16,6 +16,7 @@
 
 #include <parquet.hpp>
 #include <kowner.hpp>
+#include <qforeign.hpp>
 
 #include <climits>
 #include <exception>
@@ -55,11 +56,7 @@ struct ReaderHandle {
 std::string filenameFrom(K value);
 
 ReaderHandle& readerState(K handle) {
-    if (!handle || handle->t != 112 || handle->n != 2 ||
-        kK(handle)[0] != reinterpret_cast<K>(&destroyReaderHandle)) {
-        throw std::invalid_argument("Invalid Parquet reader handle");
-    }
-    auto* state = reinterpret_cast<ReaderHandle*>(kK(handle)[1]);
+    auto* state = qForeignObjectState<ReaderHandle>(handle, &destroyReaderHandle);
     if (!state || !state->reader) {
         throw std::invalid_argument("Parquet reader is closed");
     }
@@ -79,13 +76,7 @@ K openReader(K filename) {
     auto state = std::make_unique<ReaderHandle>(
         std::make_unique<PKDB>(PREADER::open_reader(path.c_str()))
     );
-    K handle = ktn(0, 2);
-    if (!handle) throw std::runtime_error("Failed to allocate Parquet reader handle");
-    kK(handle)[0] = reinterpret_cast<K>(&destroyReaderHandle);
-    kK(handle)[1] = reinterpret_cast<K>(state.get());
-    handle->t = 112;
-    state.release();
-    return handle;
+    return makeQForeignObject(std::move(state), &destroyReaderHandle);
 }
 
 K closeReader(K handle) {
