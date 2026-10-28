@@ -9,5 +9,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Configure CMake
+        run: cmake -B build -S .
+      - name: Build tests
+        run: cmake --build build --target k_handles_test
       - name: Run standalone q handle tests
-        run: make test
+        run: ctest --test-dir build --output-on-failure

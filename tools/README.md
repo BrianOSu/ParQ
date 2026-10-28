@@ -3,7 +3,8 @@
 Build the executable from the project root:
 
 ```sh
-make profile-reader
+cmake -B build -S .
+cmake --build build --target parq_read_profile
 ```
 
 Run one file read, optionally with warmups and repeated measured passes:

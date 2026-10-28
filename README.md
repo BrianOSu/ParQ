@@ -30,8 +30,9 @@ To read a Parquet file through ParQ's C++ reader without starting a q process,
 build and run the standalone profiler:
 
 ```bash
-make profile-reader
-build/parq_read_profile data.parquet --warmup 1 --iterations 5
+cmake -B build -S .
+cmake --build build --target parq_read_profile
+./build/parq_read_profile data.parquet --warmup 1 --iterations 5
 ```
 
 It links the K allocation API from `src/l64/c.o` and reports time spent opening
