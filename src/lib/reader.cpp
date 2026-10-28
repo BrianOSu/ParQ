@@ -131,26 +131,28 @@ K PREADER::getDateCol(parquet::Int32Reader *reader, int kType, int rowCount){
 K PREADER::getShortCol(parquet::Int32Reader *reader, int kType, int rowCount){
     KOwner res{ktn(KH, rowCount)};
     if (!res.get()) throw std::runtime_error("Failed to allocate q short column");
-    const auto values = extractShorts(reader, rowCount);
-    std::copy_n(values.begin(), rowCount, kH(res.get()));
-    return res.release();
-}
-
-std::vector<int32_t> PREADER::extractShorts(parquet::Int32Reader *reader, int rowCount){
-    std::vector<int32_t> value(rowCount);
+    // Parquet's INT32 reader requires int32_t output, while q shorts are
+    // int16_t. Decode bounded batches so the conversion does not need a
+    // rowCount-sized temporary vector.
+    constexpr int batch_capacity = 8192;
+    std::vector<int32_t> values(std::min(rowCount, batch_capacity));
     int16_t definition_level;
     int16_t repetition_level;
     int64_t values_read;
-    int rows_read=0;
-    while(reader->HasNext() && rows_read < rowCount) {
-        const auto batch_rows = reader->ReadBatch(rowCount - rows_read, &definition_level,
-            &repetition_level, value.data() + rows_read, &values_read);
+    int rows_read = 0;
+    while (reader->HasNext() && rows_read < rowCount) {
+        const int batch_size = std::min(rowCount - rows_read, batch_capacity);
+        const auto batch_rows = reader->ReadBatch(batch_size, &definition_level,
+            &repetition_level, values.data(), &values_read);
         if (batch_rows <= 0 || values_read != batch_rows)
             throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        for (int64_t i = 0; i < batch_rows; ++i) {
+            kH(res.get())[rows_read + i] = static_cast<int16_t>(values[i]);
+        }
         rows_read += static_cast<int>(batch_rows);
     }
     if (rows_read != rowCount) throw std::runtime_error("Parquet column has an unexpected row count");
-    return value;
+    return res.release();
 }
 
 K PREADER::getLongCol(parquet::Int64Reader *reader, int kType, int rowCount){

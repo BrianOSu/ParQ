@@ -41,7 +41,6 @@ namespace KDB{
                 static K getIntCol(parquet::Int32Reader *reader, int kType, int rowCount);
                 static K getDateCol(parquet::Int32Reader *reader, int kType, int rowCount);
                 static K getShortCol(parquet::Int32Reader *reader, int kType, int rowCount);
-                static std::vector<int32_t> extractShorts(parquet::Int32Reader *reader, int rowCount);
                 static K getLongCol(parquet::Int64Reader *reader, int kType, int rowCount);
                 static K getTimestampCol(parquet::Int64Reader *reader, int kType, int rowCount);
                 static K getInt96Col(parquet::Int96Reader *reader, int kType, int rowCount);
