@@ -121,10 +121,24 @@ K PREADER::getIntCol(parquet::Int32Reader *reader, int kType, int rowCount){
 }
 
 K PREADER::getDateCol(parquet::Int32Reader *reader, int kType, int rowCount){
-    KOwner res{getIntCol(reader, kType, rowCount)};
-    if (rowCount > 0) {
-        std::for_each(kI(res.get()), kI(res.get()) + rowCount, [](int &n){ n-=10957; });
+    constexpr int32_t epoch_offset = 10957;
+    KOwner res{ktn(kType, rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q date column");
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
+    int rows_read = 0;
+    while (reader->HasNext() && rows_read < rowCount) {
+        const auto batch_rows = reader->ReadBatch(rowCount - rows_read, &definition_level,
+            &repetition_level, kI(res.get()) + rows_read, &values_read);
+        if (batch_rows <= 0 || values_read != batch_rows)
+            throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        for (int64_t i = 0; i < batch_rows; ++i) {
+            kI(res.get())[rows_read + i] -= epoch_offset;
+        }
+        rows_read += static_cast<int>(batch_rows);
     }
+    if (rows_read != rowCount) throw std::runtime_error("Parquet column has an unexpected row count");
     return res.release();
 }
 
@@ -174,11 +188,24 @@ K PREADER::getLongCol(parquet::Int64Reader *reader, int kType, int rowCount){
 }
 
 K PREADER::getTimestampCol(parquet::Int64Reader *reader, int kType, int rowCount){
-    KOwner res{getLongCol(reader, kType, rowCount)};
-    if (rowCount > 0) {
-        std::for_each(kJ64(res.get()), kJ64(res.get()) + rowCount,
-                      [](int64_t &n){ n-=946684800000000000; });
+    constexpr int64_t epoch_offset = 946684800000000000;
+    KOwner res{ktn(kType, rowCount)};
+    if (!res.get()) throw std::runtime_error("Failed to allocate q timestamp column");
+    int16_t definition_level;
+    int16_t repetition_level;
+    int64_t values_read;
+    int rows_read = 0;
+    while (reader->HasNext() && rows_read < rowCount) {
+        const auto batch_rows = reader->ReadBatch(rowCount - rows_read, &definition_level,
+            &repetition_level, kJ64(res.get()) + rows_read, &values_read);
+        if (batch_rows <= 0 || values_read != batch_rows)
+            throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
+        for (int64_t i = 0; i < batch_rows; ++i) {
+            kJ64(res.get())[rows_read + i] -= epoch_offset;
+        }
+        rows_read += static_cast<int>(batch_rows);
     }
+    if (rows_read != rowCount) throw std::runtime_error("Parquet column has an unexpected row count");
     return res.release();
 }
 
