@@ -90,7 +90,7 @@ parquet::schema::NodePtr WRITER::k2parquet(const std::string& name, int type, in
 void WRITER::writeColumn(K col, parquet::RowGroupWriter* rg_writer){
     int type = col->t;
     if(type == KB)
-        writeCol(static_cast<parquet::BoolWriter*>(rg_writer->NextColumn()), col->n, &kB(col)[0]);
+        writeCol(static_cast<parquet::BoolWriter*>(rg_writer->NextColumn()), col->n, kB(col));
     #if KXVER>=3
     else if(type == UU)
         writeGuidCol(static_cast<parquet::FixedLenByteArrayWriter*>(rg_writer->NextColumn()), col);
@@ -100,17 +100,17 @@ void WRITER::writeColumn(K col, parquet::RowGroupWriter* rg_writer){
     else if(type == KH)
         writeShortCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col);
     else if(type == KI || type == KM || type == KU || type == KV || type == KT)
-        writeCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col->n, &kI(col)[0]);
+        writeCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col->n, kI(col));
     else if(type == KD){
         writeDateCol(static_cast<parquet::Int32Writer*>(rg_writer->NextColumn()), col);}
     else if(type == KJ || type == KN)
-        writeCol(static_cast<parquet::Int64Writer*>(rg_writer->NextColumn()), col->n, &kJ64(col)[0]);
+        writeCol(static_cast<parquet::Int64Writer*>(rg_writer->NextColumn()), col->n, kJ64(col));
     else if(type == KP)
         writeTimestampCol(static_cast<parquet::Int64Writer*>(rg_writer->NextColumn()), col);
     else if(type == KE)
-        writeCol(static_cast<parquet::FloatWriter*>(rg_writer->NextColumn()), col->n, &kE(col)[0]);
+        writeCol(static_cast<parquet::FloatWriter*>(rg_writer->NextColumn()), col->n, kE(col));
     else if(type == KF || type == KZ)
-        writeCol(static_cast<parquet::DoubleWriter*>(rg_writer->NextColumn()), col->n, &kF(col)[0]);
+        writeCol(static_cast<parquet::DoubleWriter*>(rg_writer->NextColumn()), col->n, kF(col));
     else if(type == KC)
         writeCharCol(static_cast<parquet::ByteArrayWriter*>(rg_writer->NextColumn()), col);
     else if(type == KS)
@@ -123,7 +123,7 @@ void WRITER::writeColumn(K col, parquet::RowGroupWriter* rg_writer){
 
 template<typename T, typename T1>
 void WRITER::writeCol(T writer, int len, T1 col){
-    writer->WriteBatch(len, nullptr, nullptr, col);
+    if (len > 0) writer->WriteBatch(len, nullptr, nullptr, col);
 }
 
 #if KXVER>=3
@@ -186,12 +186,18 @@ void WRITER::writeTimestampCol(parquet::Int64Writer* writer, K col){
 }
 
 void WRITER::writeCol(parquet::Int96Writer* writer, K col){
-    for (int i = 0; i < col->n; i++){
-        parquet::Int96 value;
-        //Magic number that adjusts for julian days
-        value.value[2]=2451545;
-        parquet::Int96SetNanoSeconds(value,kJ(col)[i]);
-        writer->WriteBatch(1, nullptr, nullptr, &value);
+    constexpr int64_t batch_capacity = 65536;
+    std::vector<parquet::Int96> values(std::min<int64_t>(col->n, batch_capacity));
+    for (int64_t offset = 0; offset < col->n;) {
+        const int64_t batch_rows = std::min<int64_t>(col->n - offset, batch_capacity);
+        for (int64_t i = 0; i < batch_rows; ++i) {
+            auto& value = values[i];
+            // Magic number that adjusts for julian days.
+            value.value[2] = 2451545;
+            parquet::Int96SetNanoSeconds(value, kJ(col)[offset + i]);
+        }
+        writer->WriteBatch(batch_rows, nullptr, nullptr, values.data());
+        offset += batch_rows;
     }
 }
 
