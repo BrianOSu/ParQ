@@ -147,21 +147,42 @@ void WRITER::writeByteCol(parquet::FixedLenByteArrayWriter* writer, K col){
 }
 
 void WRITER::writeDateCol(parquet::Int32Writer* writer, K col){
-    //need to copy because changing the underlying value
-    std::vector<int32_t> cpy(kI(col), kI(col)+col->n);
-    std::for_each(cpy.begin(), cpy.end(), [](int32_t &n){ n+=10957; });
-    writer->WriteBatch(col->n, nullptr, nullptr, &cpy[0]);
+    constexpr long long batch_capacity = 65536;
+    std::vector<int32_t> values(std::min(col->n, batch_capacity));
+    for (long long offset = 0; offset < col->n;) {
+        const long long batch_rows = std::min(col->n - offset, batch_capacity);
+        for (long long i = 0; i < batch_rows; ++i) {
+            values[i] = kI(col)[offset + i] + 10957;
+        }
+        writer->WriteBatch(batch_rows, nullptr, nullptr, values.data());
+        offset += batch_rows;
+    }
 }
 
 void WRITER::writeShortCol(parquet::Int32Writer* writer, K col){
-    writer->WriteBatch(col->n, nullptr, nullptr, &std::vector<int32_t>(&kH(col)[0], &kH(col)[0] + col->n)[0]);
+    constexpr long long batch_capacity = 65536;
+    std::vector<int32_t> values(std::min(col->n, batch_capacity));
+    for (long long offset = 0; offset < col->n;) {
+        const long long batch_rows = std::min(col->n - offset, batch_capacity);
+        for (long long i = 0; i < batch_rows; ++i) {
+            values[i] = static_cast<int32_t>(kH(col)[offset + i]);
+        }
+        writer->WriteBatch(batch_rows, nullptr, nullptr, values.data());
+        offset += batch_rows;
+    }
 }
 
 void WRITER::writeTimestampCol(parquet::Int64Writer* writer, K col){
-    //need to copy because changing the underlying value
-    std::vector<int64_t> cpy(kJ(col), kJ(col)+col->n);
-    std::for_each(cpy.begin(), cpy.end(), [](int64_t &n){ n+=946684800000000000; });
-    writer->WriteBatch(col->n, nullptr, nullptr, &cpy[0]);
+    constexpr long long batch_capacity = 65536;
+    std::vector<int64_t> values(std::min(col->n, batch_capacity));
+    for (long long offset = 0; offset < col->n;) {
+        const long long batch_rows = std::min(col->n - offset, batch_capacity);
+        for (long long i = 0; i < batch_rows; ++i) {
+            values[i] = kJ(col)[offset + i] + 946684800000000000;
+        }
+        writer->WriteBatch(batch_rows, nullptr, nullptr, values.data());
+        offset += batch_rows;
+    }
 }
 
 void WRITER::writeCol(parquet::Int96Writer* writer, K col){
