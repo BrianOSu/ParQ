@@ -245,7 +245,7 @@ K PREADER::getDoubleCol(parquet::DoubleReader *reader, int kType, int rowCount){
 
 K PREADER::getByteCol(parquet::ByteArrayReader *reader, int kType, int rowCount){
     constexpr int batch_capacity = 8192;
-    KOwner res{ktn(kType, 0)};
+    KOwner res{ktn(kType, rowCount)};
     if (!res.get()) throw std::runtime_error("Failed to allocate q byte column");
     std::vector<parquet::ByteArray> values(std::min(rowCount, batch_capacity));
     int16_t definition_level;
@@ -263,7 +263,7 @@ K PREADER::getByteCol(parquet::ByteArrayReader *reader, int kType, int rowCount)
             KOwner bytes{ktn(KG, value.len)};
             if (!bytes.get()) throw std::runtime_error("Failed to allocate q byte value");
             if (value.len) std::copy(value.ptr, value.ptr + value.len, kG(bytes.get()));
-            jk(res.address(), bytes.release());
+            kK(res.get())[rows_read + i] = bytes.release();
         }
         rows_read += static_cast<int>(batch_rows);
     }
@@ -273,7 +273,7 @@ K PREADER::getByteCol(parquet::ByteArrayReader *reader, int kType, int rowCount)
 
 K PREADER::getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCount){
     constexpr int batch_capacity = 8192;
-    KOwner res{ktn(0,0)};
+    KOwner res{ktn(0, rowCount)};
     if (!res.get()) throw std::runtime_error("Failed to allocate q string column");
     std::vector<parquet::ByteArray> values(std::min(rowCount, batch_capacity));
     int16_t definition_level;
@@ -293,7 +293,7 @@ K PREADER::getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCoun
                 : const_cast<char*>("");
             KOwner string{kpn(bytes, value.len)};
             if (!string.get()) throw std::runtime_error("Failed to allocate q string value");
-            jk(res.address(), string.release());
+            kK(res.get())[rows_read + i] = string.release();
         }
         rows_read += static_cast<int>(batch_rows);
     }
@@ -332,7 +332,7 @@ K PREADER::getSymCol(parquet::ByteArrayReader *reader, int kType, int rowCount){
 K PREADER::getFLBACol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount){
     constexpr int batch_capacity = 8192;
     int size = reader->descr()->type_length();
-    KOwner res{size == 1 ? ktn(KG,rowCount) : ktn(0,0)};
+    KOwner res{size == 1 ? ktn(KG,rowCount) : ktn(0,rowCount)};
     if (!res.get()) throw std::runtime_error("Failed to allocate q fixed byte array column");
     std::vector<parquet::FLBA> values(std::min(rowCount, batch_capacity));
     int16_t definition_level;
@@ -353,7 +353,7 @@ K PREADER::getFLBACol(parquet::FixedLenByteArrayReader *reader, int kType, int r
                 KOwner bytes{ktn(KG, size)};
                 if (!bytes.get()) throw std::runtime_error("Failed to allocate q fixed byte value");
                 std::copy(value.ptr, value.ptr + size, kG(bytes.get()));
-                jk(res.address(), bytes.release());
+                kK(res.get())[rows_read + i] = bytes.release();
             }
         }
         rows_read += static_cast<int>(batch_rows);
