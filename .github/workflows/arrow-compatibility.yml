@@ -30,7 +30,7 @@ jobs:
         run: cmake -B build -S .
 
       - name: Build ParQ and tests
-        run: cmake --build build --target ParQ parq_read_profile k_handles_test parquet_roundtrip_test --parallel
+        run: cmake --build build --parallel
 
       - name: Run standalone tests
         run: ctest --test-dir build --output-on-failure
