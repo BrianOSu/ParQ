@@ -1,0 +1,33 @@
+name: Apache Arrow compatibility
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ca-certificates lsb-release wget
+
+      - name: Install latest Apache Arrow packages
+        run: |
+          arrow_source_deb="apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          wget "https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/${arrow_source_deb}"
+          sudo apt-get install -y "./${arrow_source_deb}"
+          sudo apt-get update
+          sudo apt-get install -y libparquet-dev
+
+      - name: Configure CMake
+        run: cmake -B build -S .
+
+      - name: Build ParQ and profiler
+        run: cmake --build build --target ParQ parq_read_profile --parallel

@@ -1,4 +1,4 @@
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 //   Copyright 2020 Brian O'Sullivan
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,27 +12,34 @@
 //   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 // Functions to write parquet files:
 //   * Compression
 //   * Single row group writing
 //   * Multi row group writing
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 // Compression codecs
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 
-///
 // Define the available codecs
 // https://github.com/apache/arrow/blob/master/cpp/src/arrow/util/type_fwd.h#L42
-// Parquet doesn't neccessarily support all of these
-.pq.write.codecs:(`UNCOMPRESSED`SNAPPY`GZIP`BROTLI`ZSTD`LZ4`LZ4_FRAME`LZO`BZ2`LZ4_HADOOP)!til 10
+// Parquet doesn't necessarily support all of these
+.pq.write.codecs:([UNCOMPRESSED:0;
+                   SNAPPY:      1;
+                   GZIP:        2;
+                   BROTLI:      3;
+                   ZSTD:        4;
+                   LZ4:         5;
+                   LZ4_FRAME:   6;
+                   LZO:         7;
+                   BZ2:         8;
+                   LZ4_HADOOP:  9]);
 
-///
 // Sets the compression codec for writing files
 // @param  Codec - Sym from .pq.codecs
 .pq.write.setCodec:{[codec]
@@ -43,21 +50,18 @@
     .pq.priv.codec:.pq.write.codecs[codec];
  }
 
-///
 // Set defaults codec to ZSTD
 .pq.write.setCodec[`UNCOMPRESSED]
 
-///
 // Returns the compression the codec is set to
 // @return Sym - The default codec to write with
 .pq.write.getCodec:{.pq.write.codecs?.pq.priv.codec}
 
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 // Write multiple rows groups to a parquet file
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 
-///
 // Write a table to a parquet file
 // @param  Table      - Table to write, use select from t for splayed tables
 // @param  FilePath   - Filepath as a Sym/string, doesn't support hysm
@@ -68,7 +72,6 @@
 // @return Bool       - 1b if writes, otherwise throws error
 .pq.priv.write:.pq.priv.libPath 2:(`writer;5)
 
-///
 // Write a table to a parquet file
 // Defaults to multi row group, and doesn't append to existing
 // @param  Table    - Table to write
@@ -78,7 +81,6 @@
     .pq.priv.write[select from t;f;0b;.pq.priv.codec;(::)]
  }
 
- ///
 // Write a table to a parquet file
 // Defaults to multi row group, and doesn't append to existing
 // @param  Table      - Table to write
@@ -89,17 +91,15 @@
     .pq.priv.write[select from t;f;0b;.pq.priv.codec;m]
  }
 
-///
 // Close the loaded parquet file
 // @return Bool - 1b if closes, otherwise throws error
-.pq.write.close:.pq.priv.libPath 2:(`closeW;1) 
+.pq.write.close:.pq.priv.libPath 2:(`closeW;1)
 
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 // Write a single row group to a parquet file. 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 
-///
 // Write a table to a parquet file as a single row group.
 // Does not append to existing. Automatically closes file.
 // @param  Table    - Table to write
@@ -109,7 +109,6 @@
     .pq.priv.write[select from t;f;1b;.pq.priv.codec;(::)]
  }
 
-///
 // Write a table to a parquet file without key value metadata
 // @param  Table    - Table to write, use select from t for splayed tables
 // @param  FilePath - Filepath as a Sym/string, doesn't support hysm

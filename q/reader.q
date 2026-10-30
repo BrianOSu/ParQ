@@ -1,4 +1,4 @@
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 //   Copyright 2020 Brian O'Sullivan
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,20 +12,19 @@
 //   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 // Functions to read parquet files come in two flavours:
 //   * Directly reading a rowgroup from a file without loading it
 //   * Loading a file to read and extract information from it
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 
 
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 // Directly reading parquet files
-//////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
 
-///
 // Opens and reads a given row group in the supplied parquet file.
 // @param  File  - String/sym 
 // @param  Group - Long representing the rowgroup to read
@@ -33,7 +32,6 @@
 // @return Table - Data extracted from the parquet file
 .pq.read.group:.pq.priv.libPath 2:(`readGroup;3) 
 
-///
 // Opens and reads the first row group in the supplied parquet file.
 // @param  File  - String/sym
 // @return Table - Data extracted from the parquet file
@@ -41,9 +39,9 @@
 
 
 
-//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
 // Loading parquet file and additional functions
-//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
 
 // Load a given parquet file to make it available for reading
 // and extracting certain information from it
