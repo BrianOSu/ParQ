@@ -5,14 +5,85 @@ on:
   pull_request:
 
 jobs:
-  handle-tests:
+  tests:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ca-certificates lsb-release wget
+          arrow_source_deb="apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          wget "https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/${arrow_source_deb}"
+          sudo apt-get install -y "./${arrow_source_deb}"
+          sudo apt-get update
+          sudo apt-get install -y libparquet-dev
+
       - name: Configure CMake
         run: cmake -B build -S .
-      - name: Build handle test
-        run: cmake --build build --target k_handles_test
-      - name: Run standalone q handle tests
-        run: ctest --test-dir build --output-on-failure -R '^k_handles_test$'
+      - name: Build ParQ and tests
+        run: cmake --build build --parallel
+      - name: Run C++ tests
+        run: ctest --test-dir build --output-on-failure
+
+  coverage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build and coverage dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ca-certificates lsb-release wget gcovr
+          arrow_source_deb="apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          wget "https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/${arrow_source_deb}"
+          sudo apt-get install -y "./${arrow_source_deb}"
+          sudo apt-get update
+          sudo apt-get install -y libparquet-dev
+
+      - name: Configure instrumented build
+        run: cmake -B build-coverage -S . -DPARQ_ENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+      - name: Build and run the complete test suite
+        run: |
+          cmake --build build-coverage --parallel
+          ctest --test-dir build-coverage --output-on-failure
+      - name: Generate scoped line and branch coverage report
+        run: >-
+          gcovr --root .
+          --filter 'src/lib/'
+          --exclude-unreachable-branches
+          --xml-pretty
+          --output build-coverage/coverage.xml
+          --print-summary
+          --fail-under-line 80
+          --fail-under-branch 45
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parq-coverage
+          path: build-coverage/coverage.xml
+          if-no-files-found: warn
+
+  sanitizers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ca-certificates lsb-release wget
+          arrow_source_deb="apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          wget "https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/${arrow_source_deb}"
+          sudo apt-get install -y "./${arrow_source_deb}"
+          sudo apt-get update
+          sudo apt-get install -y libparquet-dev
+
+      - name: Configure ASan and UBSan build
+        run: cmake -B build-sanitizers -S . -DPARQ_ENABLE_SANITIZERS=ON -DCMAKE_BUILD_TYPE=Debug
+      - name: Build and run the complete test suite
+        run: |
+          cmake --build build-sanitizers --parallel
+          ctest --test-dir build-sanitizers --output-on-failure

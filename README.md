@@ -24,6 +24,19 @@ LinkedIn: https://www.linkedin.com/in/brian-o-sullivan-b98b68a4/
 
 Currently only supports Linux
 
+### C++ testing and coverage
+
+Build and run the complete C++ test suite with CMake and CTest:
+
+```bash
+cmake -B build -S .
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
+See [docs/testing-and-coverage.md](docs/testing-and-coverage.md) for scoped
+line/branch coverage reports, sanitizer builds, and CI details.
+
 ### Standalone C++ reader profiler
 
 To read a Parquet file through ParQ's C++ reader without starting a q process,
@@ -270,4 +283,3 @@ Mixed lists can lead to unexpected behaviour. By default it will try to write th
 ### Writing Row Groups
 
 Concurrently calling .pq.writeMulti will keep appending row groups containing your data to the table. When you are finished writing, call .pq.closeWriter to finalise the footer for your parquet file.
-

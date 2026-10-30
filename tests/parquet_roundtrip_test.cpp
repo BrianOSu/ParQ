@@ -1,7 +1,9 @@
 #include <kowner.hpp>
 #include <parquet.hpp>
 
+#include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -22,6 +24,7 @@ K nextRowGroup(K handle);
 K closeP(K handle);
 K currentRowGroup(K handle);
 K totalRowGroup(K handle);
+K readKeyValueMetadata(K handle);
 }
 
 namespace {
@@ -247,16 +250,19 @@ void requireTableRoundTrip(K actual, K source, int start, int count) {
 
 std::string pathFor(const char* name) {
     return (std::filesystem::temp_directory_path() /
-            (std::string("parq-") + std::to_string(std::rand()) + "-" + name)).string();
+            (std::string("parq-") +
+             std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
+             "-" + name)).string();
 }
 
-K writeTable(K table, const std::string& path, bool single) {
+K writeTable(K table, const std::string& path, bool single, J codecType = 0, K metadataValue = nullptr) {
     KOwner filename{kpn(const_cast<char*>(path.c_str()), path.size())};
     KOwner singleValue{kb(single)};
-    KOwner codec{kj(0)}; // UNCOMPRESSED
-    KOwner metadata{ktn(0, 0)};
-    require(filename.get() && singleValue.get() && codec.get() && metadata.get(), "c.o allocation failed");
-    return checked(writer(table, filename.get(), singleValue.get(), codec.get(), metadata.get()), "writer");
+    KOwner codec{kj(codecType)};
+    KOwner emptyMetadata{ktn(0, 0)};
+    require(filename.get() && singleValue.get() && codec.get() && emptyMetadata.get(), "c.o allocation failed");
+    K metadata = metadataValue ? metadataValue : emptyMetadata.get();
+    return checked(writer(table, filename.get(), singleValue.get(), codec.get(), metadata), "writer");
 }
 
 class ReaderHandle {
@@ -347,9 +353,94 @@ void testSingleRowGroup() {
     std::filesystem::remove(path);
 }
 
+void testEmptyRowGroup() {
+    KOwner source{makeTable(0, 0)};
+    const std::string path = pathFor("empty.parquet");
+    try {
+        KOwner wrote{writeTable(source.get(), path, true)};
+        KOwner pathValue{kpn(const_cast<char*>(path.c_str()), path.size())};
+        KOwner group{kj(0)};
+        KOwner allColumns{ktn(0, 0)};
+        KOwner actual{checked(readGroup(pathValue.get(), group.get(), allColumns.get()), "readGroup empty")};
+        requireTableRoundTrip(actual.get(), source.get(), 0, 0);
+    } catch (...) {
+        std::filesystem::remove(path);
+        throw;
+    }
+    std::filesystem::remove(path);
+}
+
+void testCompressedFileWithMetadata() {
+    constexpr int rows = 4;
+    KOwner source{makeTable(3, rows)};
+    KOwner metadataKeys{ktn(KS, 1)};
+    KOwner metadataValues{ktn(KS, 1)};
+    require(metadataKeys.get() && metadataValues.get(), "c.o allocation failed");
+    kS(metadataKeys.get())[0] = ss(const_cast<char*>("test-suite"));
+    kS(metadataValues.get())[0] = ss(const_cast<char*>("parquet-roundtrip"));
+    KOwner metadata{xD(metadataKeys.release(), metadataValues.release())};
+    require(metadata.get() != nullptr, "c.o failed to create metadata dictionary");
+
+    const std::string path = pathFor("metadata.parquet");
+    try {
+        KOwner wrote{writeTable(source.get(), path, true, 1, metadata.get())}; // SNAPPY
+        ReaderHandle reader(path);
+        KOwner actualMetadata{checked(readKeyValueMetadata(reader.get()), "readKeyValueMetadata")};
+        require(actualMetadata.get()->t == XD, "metadata should be returned as a q dictionary");
+        K keys = kK(actualMetadata.get())[0];
+        K values = kK(actualMetadata.get())[1];
+        require(keys->t == KS && values->t == KS && keys->n == 1 && values->n == 1,
+                "metadata should contain one symbol key and value");
+        require(std::string(kS(keys)[0]) == "test-suite" &&
+                std::string(kS(values)[0]) == "parquet-roundtrip",
+                "key-value metadata should round-trip");
+        KOwner allColumns{ktn(0, 0)};
+        KOwner actual{checked(readMulti(reader.get(), allColumns.get()), "readMulti compressed")};
+        requireTableRoundTrip(actual.get(), source.get(), 3, rows);
+    } catch (...) {
+        std::filesystem::remove(path);
+        throw;
+    }
+    std::filesystem::remove(path);
+}
+
+void testDuplicateSelectedColumns() {
+    KOwner source{makeTable(5, 3)};
+    const std::string path = pathFor("duplicates.parquet");
+    try {
+        KOwner wrote{writeTable(source.get(), path, true)};
+        KOwner pathValue{kpn(const_cast<char*>(path.c_str()), path.size())};
+        KOwner group{kj(0)};
+        KOwner selectedColumns{ktn(KS, 2)};
+        require(selectedColumns.get() != nullptr, "c.o failed to allocate selected columns");
+        kS(selectedColumns.get())[0] = ss(const_cast<char*>("int"));
+        kS(selectedColumns.get())[1] = ss(const_cast<char*>("int"));
+        KOwner actual{checked(readGroup(pathValue.get(), group.get(), selectedColumns.get()),
+                              "readGroup duplicate columns")};
+        require(actual.get()->t == XT, "duplicate column read should return a table");
+        K names = kK(actual.get()->k)[0];
+        require(names->n == 2 &&
+                std::string(kS(names)[0]) == "int" && std::string(kS(names)[1]) == "int",
+                "duplicate selections should preserve both requested columns");
+        K first = columnAt(actual.get(), 0);
+        K second = columnAt(actual.get(), 1);
+        require(first->t == KI && second->t == KI && first->n == 3 && second->n == 3,
+                "duplicate selections should preserve column type and row count");
+        for (int i = 0; i < 3; ++i) {
+            require(kI(first)[i] == kI(columnAt(source.get(), 4))[i] &&
+                    kI(second)[i] == kI(first)[i],
+                    "duplicate selected values should match");
+        }
+    } catch (...) {
+        std::filesystem::remove(path);
+        throw;
+    }
+    std::filesystem::remove(path);
+}
+
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
     struct TestCase {
         const char* name;
         void (*run)();
@@ -357,11 +448,29 @@ int main() {
     const TestCase tests[] = {
         {"Multiple row groups, selected columns, and reader advancement", testMultiRowGroups},
         {"Single row group with all supported example column types", testSingleRowGroup},
+        {"Empty row group", testEmptyRowGroup},
+        {"Compressed file with key-value metadata", testCompressedFileWithMetadata},
+        {"Duplicate selected columns", testDuplicateSelectedColumns},
     };
 
-    std::cout << "Running " << std::size(tests) << " ParQ round-trip tests:\n";
+    if (argc > 2) {
+        std::cerr << "Usage: parquet_roundtrip_test [test name]\n";
+        return EXIT_FAILURE;
+    }
+    const std::string requested = argc == 2 ? argv[1] : "";
+    if (!requested.empty() &&
+        std::none_of(std::begin(tests), std::end(tests), [&](const TestCase& test) {
+            return requested == test.name;
+        })) {
+        std::cerr << "Unknown ParQ round-trip test: " << requested << '\n';
+        return EXIT_FAILURE;
+    }
+
+    const std::size_t testCount = requested.empty() ? std::size(tests) : 1;
+    std::cout << "Running " << testCount << " ParQ round-trip tests:\n";
     std::size_t passed = 0;
     for (std::size_t i = 0; i < std::size(tests); ++i) {
+        if (!requested.empty() && requested != tests[i].name) continue;
         std::cout << "[" << (i + 1) << "/" << std::size(tests) << "] " << tests[i].name << " ... "
                   << std::flush;
         try {
@@ -375,8 +484,8 @@ int main() {
         }
     }
 
-    const double percentage = 100.0 * static_cast<double>(passed) / std::size(tests);
-    std::cout << "Result: " << passed << "/" << std::size(tests) << " tests passed ("
+    const double percentage = 100.0 * static_cast<double>(passed) / testCount;
+    std::cout << "Result: " << passed << "/" << testCount << " tests passed ("
               << std::fixed << std::setprecision(1) << percentage << "%)\n";
-    return passed == std::size(tests) ? EXIT_SUCCESS : EXIT_FAILURE;
+    return passed == testCount ? EXIT_SUCCESS : EXIT_FAILURE;
 }

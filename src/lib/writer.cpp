@@ -41,7 +41,9 @@ std::shared_ptr<GroupNode> WRITER::SetupSchema(K names, K values, int numCols){
     parquet::schema::NodeVector fields;
     for(int i=0;i<numCols;i++){
         int colType = kK(values)[i]->t;
-        int firstType = colType == 0? kK(kK(values)[i])[0]->t : 0;
+        int firstType = colType == 0 && kK(values)[i]->n > 0
+            ? kK(kK(values)[i])[0]->t
+            : 0;
         fields.push_back(k2parquet(kS(names)[i], colType, firstType));
     }
     return std::static_pointer_cast<GroupNode>(
