@@ -48,6 +48,11 @@ target_link_libraries(k_handles_test PRIVATE
 
 add_test(NAME k_handles_test COMMAND k_handles_test)
 
+# End-to-end Parquet tests use c.o to create q values and call ParQ's C API.
+add_executable(parquet_roundtrip_test tests/parquet_roundtrip_test.cpp)
+target_link_libraries(parquet_roundtrip_test PRIVATE ParQ)
+add_test(NAME parquet_roundtrip_test COMMAND parquet_roundtrip_test)
+
 # Profiler binary: parq_read_profile
 add_executable(parq_read_profile
     tools/parq_read_profile.cpp

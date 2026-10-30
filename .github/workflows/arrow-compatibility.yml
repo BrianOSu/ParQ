@@ -29,5 +29,8 @@ jobs:
       - name: Configure CMake
         run: cmake -B build -S .
 
-      - name: Build ParQ and profiler
-        run: cmake --build build --target ParQ parq_read_profile --parallel
+      - name: Build ParQ and tests
+        run: cmake --build build --target ParQ parq_read_profile k_handles_test parquet_roundtrip_test --parallel
+
+      - name: Run standalone tests
+        run: ctest --test-dir build --output-on-failure
