@@ -3,7 +3,7 @@
 Build the executable from the project root:
 
 ```sh
-cmake -B build -S .
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build --target parq_read_profile
 ```
 

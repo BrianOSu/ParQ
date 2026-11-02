@@ -14,6 +14,8 @@
    limitations under the License.
 */
 
+#include <array>
+#include <cstring>
 #include <reader.hpp>
 #include <stdexcept>
 
@@ -24,7 +26,8 @@ std::shared_ptr<parquet::ParquetFileReader> PREADER::open_reader(const std::stri
 }
 
 K PREADER::readColumns(std::shared_ptr<parquet::ColumnReader> column_reader,
-                        int rowCount ){
+                        int rowCount,
+                        bool stableDictionaryValues){
     switch(column_reader->type()){
         case Type::BOOLEAN:
             return getCol(static_cast<parquet::BoolReader*>(column_reader.get()), rowCount, KB, getBoolCol);
@@ -62,7 +65,8 @@ K PREADER::readColumns(std::shared_ptr<parquet::ColumnReader> column_reader,
                 case parquet::LogicalType::Type::STRING:
                     return getCol(static_cast<parquet::ByteArrayReader*>(column_reader.get()), rowCount, 0, getStringCol);
                 case parquet::LogicalType::Type::ENUM:
-                    return getCol(static_cast<parquet::ByteArrayReader*>(column_reader.get()), rowCount, 0, getSymCol);
+                    return getSymCol(static_cast<parquet::ByteArrayReader*>(column_reader.get()),
+                                     0, rowCount, stableDictionaryValues);
                 default:
                     return getCol(static_cast<parquet::ByteArrayReader*>(column_reader.get()), rowCount, 0, getByteCol);
             }
@@ -302,6 +306,18 @@ K PREADER::getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCoun
     constexpr int batch_capacity = 8192;
     KOwner res{ktn(0, rowCount)};
     if (!res.get()) throw std::runtime_error("Failed to allocate q string column");
+    // One-character strings are common in character columns and are often
+    // dictionary encoded. Reuse the q string object for each byte value rather
+    // than allocating one million identical one-byte strings.
+    std::array<K, 257> singleByteStrings{};
+    struct StringCacheOwner {
+        std::array<K, 257>& values;
+        ~StringCacheOwner() {
+            for (K value : values) {
+                if (value) r0(value);
+            }
+        }
+    } cacheOwner{singleByteStrings};
     std::vector<parquet::ByteArray> values(std::min(rowCount, batch_capacity));
     int16_t definition_level;
     int16_t repetition_level;
@@ -318,6 +334,20 @@ K PREADER::getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCoun
             char* bytes = value.len
                 ? reinterpret_cast<char*>(const_cast<uint8_t*>(value.ptr))
                 : const_cast<char*>("");
+            if (value.len <= 1) {
+                const size_t cacheIndex = value.len == 0
+                    ? 0
+                    : static_cast<size_t>(value.ptr[0]) + 1;
+                if (singleByteStrings[cacheIndex]) {
+                    kK(res.get())[rows_read + i] = r1(singleByteStrings[cacheIndex]);
+                } else {
+                    KOwner string{kpn(bytes, value.len)};
+                    if (!string.get()) throw std::runtime_error("Failed to allocate q string value");
+                    singleByteStrings[cacheIndex] = r1(string.get());
+                    kK(res.get())[rows_read + i] = string.release();
+                }
+                continue;
+            }
             KOwner string{kpn(bytes, value.len)};
             if (!string.get()) throw std::runtime_error("Failed to allocate q string value");
             kK(res.get())[rows_read + i] = string.release();
@@ -328,10 +358,26 @@ K PREADER::getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCoun
     return res.release();
 }
 
-K PREADER::getSymCol(parquet::ByteArrayReader *reader, int kType, int rowCount){
+K PREADER::getSymCol(parquet::ByteArrayReader *reader,
+                     int kType,
+                     int rowCount,
+                     bool stableDictionaryValues){
     constexpr int batch_capacity = 8192;
+    constexpr size_t max_cached_symbols = 65536;
+    constexpr size_t symbol_cache_capacity = 131072;
     KOwner res{ktn(KS,rowCount)};
     if (!res.get()) throw std::runtime_error("Failed to allocate q symbol column");
+    struct SymbolCacheEntry {
+        const uint8_t* value = nullptr;
+        S symbol = nullptr;
+    };
+    // Dictionary-backed byte-array pointers remain stable for the row group.
+    // The caller enables this table only when metadata confirms dictionary-only data pages.
+    std::vector<SymbolCacheEntry> symbols(stableDictionaryValues ? symbol_cache_capacity : 0);
+    size_t cachedSymbols = 0;
+    bool cacheSymbols = stableDictionaryValues;
+    bool emptySymbolCached = false;
+    S emptySymbol = nullptr;
     std::vector<parquet::ByteArray> values(std::min(rowCount, batch_capacity));
     int16_t definition_level;
     int16_t repetition_level;
@@ -345,10 +391,47 @@ K PREADER::getSymCol(parquet::ByteArrayReader *reader, int kType, int rowCount){
             throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
         for (int64_t i = 0; i < batch_rows; ++i) {
             const auto& value = values[i];
-            char* text = value.len
-                ? reinterpret_cast<char*>(const_cast<uint8_t*>(value.ptr))
-                : const_cast<char*>("");
-            kS(res.get())[rows_read + i] = sn(text, value.len);
+            if (cacheSymbols) {
+                if (value.len == 0) {
+                    if (emptySymbolCached) {
+                        kS(res.get())[rows_read + i] = emptySymbol;
+                    } else {
+                        emptySymbol = sn(const_cast<char*>(""), 0);
+                        emptySymbolCached = true;
+                        kS(res.get())[rows_read + i] = emptySymbol;
+                    }
+                    continue;
+                }
+
+                const uintptr_t address = reinterpret_cast<uintptr_t>(value.ptr);
+                uint64_t hash = address;
+                hash ^= hash >> 33;
+                hash *= 0xff51afd7ed558ccdULL;
+                hash ^= hash >> 33;
+                hash *= 0xc4ceb9fe1a85ec53ULL;
+                hash ^= hash >> 33;
+                size_t slot = static_cast<size_t>(hash) & (symbol_cache_capacity - 1);
+                while (symbols[slot].symbol) {
+                    const auto& entry = symbols[slot];
+                    if (entry.value == value.ptr) {
+                        kS(res.get())[rows_read + i] = entry.symbol;
+                        break;
+                    }
+                    slot = (slot + 1) & (symbol_cache_capacity - 1);
+                }
+                if (symbols[slot].symbol) continue;
+                if (cachedSymbols < max_cached_symbols) {
+                    S symbol = sn(const_cast<char*>(reinterpret_cast<const char*>(value.ptr)), value.len);
+                    symbols[slot] = {value.ptr, symbol};
+                    ++cachedSymbols;
+                    kS(res.get())[rows_read + i] = symbol;
+                    continue;
+                } else {
+                    cacheSymbols = false;
+                }
+            }
+            const char* text = value.len ? reinterpret_cast<const char*>(value.ptr) : "";
+            kS(res.get())[rows_read + i] = sn(const_cast<char*>(text), value.len);
         }
         rows_read += static_cast<int>(batch_rows);
     }
@@ -406,7 +489,7 @@ K PREADER::getUUIDCol(parquet::FixedLenByteArrayReader *reader, int kType, int r
         if (batch_rows <= 0 || values_read != batch_rows)
             throw std::runtime_error("Nullable or malformed Parquet column is unsupported");
         for (int64_t i = 0; i < batch_rows; ++i) {
-            std::copy(values[i].ptr, values[i].ptr + 16, kU(res.get())[rows_read + i].g);
+            std::memcpy(kU(res.get())[rows_read + i].g, values[i].ptr, 16);
         }
         rows_read += static_cast<int>(batch_rows);
     }

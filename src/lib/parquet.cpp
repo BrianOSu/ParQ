@@ -134,7 +134,29 @@ S PKDB::readColName(std::shared_ptr<parquet::RowGroupReader> row_group_reader, i
 }
 
 K PKDB::getColData(std::shared_ptr<parquet::RowGroupReader> row_group_reader, int index, int num_rows){
-	return PREADER::readColumns(row_group_reader->Column(index), num_rows);
+    bool stableDictionaryValues = false;
+    const auto* descriptor = row_group_reader->metadata()->schema()->Column(index);
+    if (descriptor->physical_type() == parquet::Type::BYTE_ARRAY &&
+        descriptor->logical_type()->type() == parquet::LogicalType::Type::ENUM) {
+        // Pointer-keyed symbol reuse is safe only when every data page uses
+        // dictionary values; plain page buffers may be replaced as batches advance.
+        const auto columnMetadata = row_group_reader->metadata()->ColumnChunk(index);
+        bool hasDataPage = false;
+        stableDictionaryValues = true;
+        for (const auto& pageEncoding : columnMetadata->encoding_stats()) {
+            if (pageEncoding.page_type == parquet::PageType::DATA_PAGE ||
+                pageEncoding.page_type == parquet::PageType::DATA_PAGE_V2) {
+                hasDataPage = true;
+                if (pageEncoding.encoding != parquet::Encoding::RLE_DICTIONARY &&
+                    pageEncoding.encoding != parquet::Encoding::PLAIN_DICTIONARY) {
+                    stableDictionaryValues = false;
+                    break;
+                }
+            }
+        }
+        stableDictionaryValues = stableDictionaryValues && hasDataPage;
+    }
+    return PREADER::readColumns(row_group_reader->Column(index), num_rows, stableDictionaryValues);
 }
 
 std::unique_ptr<PWRITE> PWRITE::instance{};

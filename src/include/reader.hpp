@@ -32,7 +32,9 @@ namespace KDB{
                 ~PREADER();
 
                 static std::shared_ptr<parquet::ParquetFileReader> open_reader(const std::string& path);
-                static K readColumns(std::shared_ptr<parquet::ColumnReader> column_reader, int rowCount);
+                static K readColumns(std::shared_ptr<parquet::ColumnReader> column_reader,
+                                     int rowCount,
+                                     bool stableDictionaryValues = false);
 
                 template<typename T, typename F> 
                 static K getCol(T *reader, int rowCount, int kType, F func);
@@ -48,7 +50,10 @@ namespace KDB{
                 static K getDoubleCol(parquet::DoubleReader *reader, int kType, int rowCount);
                 static K getByteCol(parquet::ByteArrayReader *reader, int kType, int rowCount);
                 static K getStringCol(parquet::ByteArrayReader *reader, int kType, int rowCount);
-                static K getSymCol(parquet::ByteArrayReader *reader, int kType, int rowCount);
+                static K getSymCol(parquet::ByteArrayReader *reader,
+                                   int kType,
+                                   int rowCount,
+                                   bool stableDictionaryValues = false);
                 static K getFLBACol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount);
                 #if KXVER>=3
                 static K getUUIDCol(parquet::FixedLenByteArrayReader *reader, int kType, int rowCount);

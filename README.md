@@ -43,7 +43,7 @@ To read a Parquet file through ParQ's C++ reader without starting a q process,
 build and run the standalone profiler:
 
 ```bash
-cmake -B build -S .
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build --target parq_read_profile
 ./build/parq_read_profile data.parquet --warmup 1 --iterations 5
 ```
