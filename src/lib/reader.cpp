@@ -22,7 +22,7 @@
 using namespace KDB::PARQ;
 
 std::shared_ptr<parquet::ParquetFileReader> PREADER::open_reader(const std::string& path){
-    return parquet::ParquetFileReader::OpenFile(path, false);
+    return parquet::ParquetFileReader::OpenFile(path, true);
 }
 
 K PREADER::readColumns(std::shared_ptr<parquet::ColumnReader> column_reader,
